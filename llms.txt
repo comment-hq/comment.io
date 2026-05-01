@@ -74,7 +74,7 @@ Every request below needs: `Authorization: Bearer {token}` — GET the comm firs
 ### Key rules
 - **Always GET the doc before editing.** Never guess at document content.
 - **Identity is derived from your Bearer token.** Do **not** send a `by` field — requests that include it are rejected with `400 UNEXPECTED_FIELD`. If this is a per-doc token, register a display name once with `POST /agents/identify` (see below) before writing.
-- **`quote` is required** for comments and suggestions, unless replying to an existing comment with `reply_to` — replies inherit the parent's position and need no quote.
+- **`quote` is required** for comments and suggestions, unless replying to an existing comment with `reply_to` — the new comment posts to the same block as the parent and needs no quote. Chronological order within the block is the thread.
 - Prefer small targeted edits — other people may be editing concurrently.
 - `comment_id` from creation responses is the `:cid` in subsequent route params.
 
@@ -135,7 +135,8 @@ Check `your_role` before attempting edits. If you are a commenter, use comments 
 #### Read-only docs (`read_only`)
 If the GET response has `"read_only": true`, the owner has locked the document. Only the owner can PATCH or accept suggestions; everyone else receives `403` with `"code": "DOC_READ_ONLY"`. Comments and suggestions still work — route all change proposals through `POST /docs/:slug/comments` until the owner unlocks the doc or accepts your suggestion.
 
-Comments are grouped by block position in the `blocks` array. Each block has a `quote` (the anchored text) and its `comments` sorted chronologically. To reply to a comment, use `reply_to` with its `id`. IDs are UUIDs, stable forever. Use `id` from creation responses as `:cid` in subsequent routes.
+Comments are grouped by block position in the `blocks` array. Each block has a `quote` (the anchored text) and its `comments` sorted chronologically — that is the thread structure. Use `reply_to` to attach a reply to a parent comment's block without re-quoting. IDs are UUIDs, stable forever. Use `id` from creation responses as `:cid` in subsequent routes.
+Do not read thread structure from a comment-level `reply_to` field in GET responses. During migration that field may appear as `null`; ignore it and use the surrounding block's ordered `comments` list.
 
 #### Deep-link with `?focus=`
 Add `?focus=comment-{id}` to the GET request to receive a `focused` field in the response pointing to the specific comment:
@@ -146,7 +147,7 @@ Response includes all comments as usual, plus:
 ```json
 { "focused": { "id": "...", "quote": "...", "text": "...", ... } }
 ```
-Works for any comment type — plain comments, suggestions, and replies all use `?focus=comment-{id}`.
+Works for any comment type — plain comments, suggestions, and same-block follow-up comments all use `?focus=comment-{id}`.
 
 ### Identify yourself (once per doc)
 The first time you write to a doc with a per-doc Bearer token, register a display name:
@@ -229,7 +230,7 @@ curl -s -X POST "https://comment.io/docs/{slug}/comments" \
 Response (201): `{ "comment_id": "uuid", "created_at": "...", "revision": N }`
 
 ### Reply to a comment
-Use `reply_to` with a comment ID to reply to an existing thread. No `quote` needed:
+Use `reply_to` with a comment ID to post to the same block-thread. No `quote` needed:
 ```bash
 curl -s -X POST "https://comment.io/docs/{slug}/comments" \
   -H "Authorization: Bearer {token}" \
@@ -237,6 +238,7 @@ curl -s -X POST "https://comment.io/docs/{slug}/comments" \
   -d '{"text": "your reply", "reply_to": "{comment_id}"}'
 ```
 Response (201): `{ "comment_id": "uuid", "created_at": "...", "revision": N }`
+The reply appears in the same block-thread as the parent. No separate parent pointer is stored or returned; during migration GET responses may include `"reply_to": null`, which should be ignored.
 
 ### Suggest a change
 Add a `suggestion` field to create a suggestion instead of a plain comment. `quote` is required — it identifies the text being replaced:
