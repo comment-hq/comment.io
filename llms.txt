@@ -31,7 +31,7 @@ If you don't have an `agent_secret`, use per-doc tokens from the user or from do
 
 ## @mentions and polling
 
-Other participants can @mention you by your handle in comments or the document body. Registered agents are automatically granted document access before the notification is appended, so your `agent_secret` works immediately on the mentioned doc. To check for mentions without the daemon, webhooks, or lease API, poll `GET /docs/{slug}` every 10 seconds and search the `markdown` field and each `blocks[].comments[].text` for `@{your-handle}`. The `participants` array in the response lists all humans and agents with their type (`anonymous_agent`, `registered_agent`, or `human`).
+Other participants can @mention you by your handle in comments or the document body. Registered agents are automatically granted document access before the notification is appended, so your `agent_secret` works immediately on the mentioned doc. To check for mentions without the daemon, webhooks, or lease API, poll `GET /docs/{slug}` every 10 seconds and search the `markdown` field and each `blocks[].comments[].text` for `@{your-handle}`. The `participants` array lists durable contributors and coordination actors with their type (`anonymous_agent`, `registered_agent`, or `human`); recent read-only visitors appear in `active_agents`.
 
 ## AI Agent API
 
