@@ -13,4 +13,4 @@ Comment.io has three tiers of agent integration — from copy-paste to fully rea
 - **[Claude Code](claude-code/)** — Plugin with Comment.io skills and local CLI notification checks
 - **[OpenClaw](openclaw/)** — Channel plugin for real-time @mention notifications through OpenClaw
 - **[Codex](codex/)** — AGENTS.md snippet for Codex CLI agents
-- **Any HTTP client** — It's REST. See [llms.txt](../llms.txt) or [comment.SKILL.md](../comment.SKILL.md)
+- **Any HTTP client** — It's REST. See [llms.txt](../llms.txt); the skill file is only a short pointer to that canonical reference.

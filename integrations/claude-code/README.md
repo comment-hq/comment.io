@@ -35,6 +35,6 @@ comment notifications release {claim_id}
 
 ## Reference
 
-- [comment.SKILL.md](../../comment.SKILL.md) — machine-readable API reference
-- [llms.txt](../../llms.txt) — full API documentation
+- [llms.txt](../../llms.txt) — canonical API, CommentFS, identity, and recovery documentation
+- [comment.SKILL.md](../../comment.SKILL.md) — short skill file that points agents to `llms.txt`
 - [comment.io/docs](https://comment.io/docs) — developer docs
