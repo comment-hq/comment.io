@@ -258,6 +258,16 @@ curl -s -X POST "https://comment.io/docs/{slug}/comments" \
   -d '{"text": "your comment", "quote": "exact text from doc"}'
 ```
 Response (201): `{ "comment_id": "uuid", "created_at": "...", "revision": N }`
+The `quote` is matched against the document's markdown — slice it directly from the `markdown` field on GET (or from any `content_blocks[].quote`). Markdown markup like `## ` headings, `**bold**`, list markers, and inline code spans are part of the match string, not stripped.
+
+Or anchor to a specific block by id — most stable, immune to text-shape changes:
+```bash
+curl -s -X POST "https://comment.io/docs/{slug}/comments" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "your comment", "block_id": "blk_<idx>_<from>_<to>_<hash>"}'
+```
+`block_id` comes from `content_blocks[].block_id` on GET; it's stable for that revision only — stale ids return 409 `BLOCK_NOT_FOUND`, GET latest and retry. Cannot be combined with `suggestion` (suggestions need `quote` to define the replacement range) or with `reply_to`.
 
 ### Reply to a comment
 Use `reply_to` with a comment ID to post to the same block-thread. No `quote` needed:
