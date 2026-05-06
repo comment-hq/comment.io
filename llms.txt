@@ -232,7 +232,7 @@ curl -s -X PATCH "https://comment.io/docs/{slug}" \
     {"old_string": "second change", "new_string": "updated second"}
   ]}'
 ```
-Response includes per-edit results (`"edits": [{"ok": true, "index": 0}, {"ok": false, "index": 1, "code": "EDIT_NOT_FOUND", ...}]`). If some edits fail, successful ones are kept — retry only `failed_edit_indexes` against the returned `markdown`. HTTP 200 if any edit succeeds, 409 only if ALL fail. Max 100 edits per request. Insert-only structural batches may be reconciled sequentially by the server; `sequential_reconcile: true` means each successful insert was applied in request order.
+Response includes per-edit results (`"edits": [{"ok": true, "index": 0}, {"ok": false, "index": 1, "code": "EDIT_NOT_FOUND", ...}]`). If some edits fail, successful ones are kept — retry only `failed_edit_indexes` against the returned `markdown`. If a global structural or intent safety check rejects the request, matched edits are returned as `ok:false` with `code:"BATCH_ROLLED_BACK"`; nothing was committed, and `likely_edit_indexes` only identifies edits that matched before rollback. HTTP 200 means at least one edit committed. HTTP 409 or 422 means no edit committed; check the top-level `code` and per-edit `edits` array before retrying. Max 100 edits per request. Insert-only structural batches may be reconciled sequentially by the server; `sequential_reconcile: true` means each successful insert was applied in request order.
 
 #### When your edits affect comments
 Comment Docs anchors each comment to a block of text. If your PATCH rewrites a block, the server silently re-anchors the comment to the block that best matches the original text. If it can't (the new block is too different), the server returns `409 EDITS_AFFECT_COMMENTS` listing the affected comments and candidate new-block positions. Retry with `comment_outcomes` to declare what should happen to each:
@@ -249,6 +249,21 @@ Comment Docs anchors each comment to a block of text. If your PATCH rewrites a b
 The 409 body includes a plain-language `instruction` field telling you exactly how to build the retry. `affected_comments[].candidate_blocks` lists the server's best guesses for where each orphaned comment could be remapped — pick an `idx` (preferred) or pass a verbatim `new_block_quote`. Every id returned in `affected_comments` must appear in `comment_outcomes` or the retry fails with `UNDECLARED_ORPHAN`. Removed comments are tombstoned (hidden from the main view but readable at `https://comment.io/docs/{slug}/tombstones`).
 
 Sub-codes and how to react: `UNDECLARED_ORPHAN` (add the missing id to `comment_outcomes`), `NEW_BLOCK_IDX_OUT_OF_RANGE` (pick a valid idx from `candidate_blocks`), `NEW_BLOCK_QUOTE_AMBIGUOUS` (switch to `new_block_idx`), `NEW_BLOCK_QUOTE_NOT_FOUND` (quote not in new doc — pick from candidates or `remove`), `COMMENT_NOT_AT_RISK` (drop the entry, fuzzy match already handled it), `COMMENT_NOT_FOUND` (id was removed by someone else — drop the entry and retry).
+
+### Update title
+Send `title` on the same PATCH endpoint — alone, or alongside `edits`. The document's title is metadata, separate from the markdown body, so changing it does not require `base_revision` and does not bump the document revision.
+```bash
+curl -s -X PATCH "https://comment.io/docs/{slug}" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "New document title"}'
+```
+Response (200): `{ "title": "New document title", "revision": N }` (revision unchanged from the prior GET).
+
+- Send `title` together with `edits` to rename and edit in one atomic request: `{"edits": [...], "title": "New title", "base_revision": REVISION}`. The response includes `markdown`, `revision`, and `title`. The audit log records both an `edit` and a `title_change` event.
+- Send `{"title": ""}` to clear the title (stored as `null`, displayed as the doc's slug).
+- Add `?dryRun=true` to preview a title-only update without committing — the response includes `"dry_run": true`.
+- Requires `editor` role, same as text edits.
 
 ### Comment on text
 ```bash
@@ -407,7 +422,7 @@ Returns a paginated, newest-first log of all document mutations: edits, comments
 |--------|------|------|-------------|
 | POST | /docs | optional | Create doc (use Bearer token to appear as registered agent) |
 | GET | /docs/:slug | viewer+ | Read doc (comments, authorship). Add `?docs` for API reference. Add `?focus=comment-{id}` for a specific comment. |
-| PATCH | /docs/:slug | editor+ | Edit (old_string/new_string, after/before anchors, or after_block/before_block targets). Add ?dryRun=true to preview. Batch up to 100 edits. |
+| PATCH | /docs/:slug | editor+ | Edit text (old_string/new_string, after/before anchors, or after_block/before_block targets) and/or update the document title. Send `title` alone (no `edits`) for a title-only update. Add ?dryRun=true to preview. Batch up to 100 edits. |
 | DELETE | /docs/:slug | owner | Soft-delete doc |
 | POST | /docs/:slug/comments | commenter+ | Add comment, suggestion, or reply |
 | POST | /docs/:slug/comments/:cid/resolve | commenter+ | Resolve comment |
