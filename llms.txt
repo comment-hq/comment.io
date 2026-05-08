@@ -192,9 +192,10 @@ curl -s -X PATCH "https://comment.io/docs/{slug}" \
   -H "Content-Type: application/json" \
   -d '{"edits": [{"old_string": "exact text", "new_string": "replacement"}], "base_revision": REVISION}'
 ```
-`old_string` must match byte-for-byte. `base_revision` is optional but recommended — prevents stale edits.
+`old_string` should match the canonical `markdown` from GET. The server also applies the same Markdown-control canonicalization used by fresh PATCH, so literal text such as `vector<int>` can match the escaped canonical form `vector\<int\>`. `base_revision` is optional but recommended. For a stale `base_revision`, the server rebases a non-empty `old_string` replacement if the canonicalized target still appears once in the current markdown; if it is gone or repeated, the 409 response includes current `markdown` and `revision` so you can reason and retry.
 
 Response (200): `{ "markdown": "...", "revision": N }`
+Stale-rebase success also includes `"rebased": true`, the requested `base_revision`, `applied_to_revision`, `applied_to_markdown_sha256`, and per-edit `edits` / `applied` / `failed` diagnostics.
 
 #### Insert with anchors
 Instead of `old_string`, use `after` and/or `before` to insert text at a specific location:
@@ -207,8 +208,9 @@ curl -s -X PATCH "https://comment.io/docs/{slug}" \
 - `after`: insert after this text. `null` = insert at beginning of the document.
 - `before`: insert before this text. `null` = insert at end of the document.
 - At least one anchor is required. Do NOT combine with `old_string` (returns 400).
-- Anchors match against the exact canonical `markdown` from GET after server normalization/escaping. Use both to disambiguate repeated text.
-- `base_revision` is required for anchor-based inserts.
+- Anchors should match the canonical `markdown` from GET after server normalization/escaping; the server also applies the same Markdown-control canonicalization fallback as `old_string`. Use both anchors to disambiguate repeated text on current-base requests.
+- `base_revision` is required for anchor-based inserts. If it is stale, exactly one non-empty `after` or `before` anchor can be rebased as cursor/paste semantics against the current markdown using that same canonical matching behavior. Paired `after`+`before`, `null` boundary anchors, block targets, and `at` offsets still require a current `base_revision` and return `EDIT_STALE` when stale.
+- For list appends after a text anchor, send a block-separated list item such as `"\n\n- note\n"`. A single leading newline before a list marker is normalized for anchor inserts. If multiple stale agents append list items after the same anchor, later commits append after the existing list under that anchor, preserving commit order.
 - Ambiguous anchor errors include `edits[].index`, `occurrences`, and context `snippets` so you can retry only the failing edit.
 
 #### Insert with block IDs
@@ -222,7 +224,7 @@ curl -s -X PATCH "https://comment.io/docs/{slug}?dryRun=true" \
 Use `after_block` or `before_block`; `null` means document beginning/end. Block IDs are valid only with the `revision` from the same GET, so always send `base_revision`. `?dryRun=true` validates and returns the resulting `markdown` without committing.
 
 #### Batch edits
-Send multiple edits in one request. Each is applied sequentially — later edits see the result of earlier ones:
+Send multiple edits in one request. Current-base batches are applied sequentially — later edits see the result of earlier ones:
 ```bash
 curl -s -X PATCH "https://comment.io/docs/{slug}" \
   -H "Authorization: Bearer {token}" \
@@ -232,10 +234,10 @@ curl -s -X PATCH "https://comment.io/docs/{slug}" \
     {"old_string": "second change", "new_string": "updated second"}
   ]}'
 ```
-Response includes per-edit results (`"edits": [{"ok": true, "index": 0}, {"ok": false, "index": 1, "code": "EDIT_NOT_FOUND", ...}]`). If some edits fail, successful ones are kept — retry only `failed_edit_indexes` against the returned `markdown`. If a global structural or intent safety check rejects the request, matched edits are returned as `ok:false` with `code:"BATCH_ROLLED_BACK"`; nothing was committed, and `likely_edit_indexes` only identifies edits that matched before rollback. HTTP 200 means at least one edit committed. HTTP 409 or 422 means no edit committed; check the top-level `code` and per-edit `edits` array before retrying. Max 100 edits per request. Insert-only structural batches may be reconciled sequentially by the server; `sequential_reconcile: true` means each successful insert was applied in request order.
+Response includes per-edit results (`"edits": [{"ok": true, "index": 0}, {"ok": false, "index": 1, "code": "EDIT_NOT_FOUND", ...}]`). If some edits fail, successful ones are kept — retry only `failed_edit_indexes` against the returned `markdown`. If a global structural or intent safety check rejects the request, matched edits are returned as `ok:false` with `code:"BATCH_ROLLED_BACK"`; nothing was committed, and `likely_edit_indexes` only identifies edits that matched before rollback. HTTP 200 means at least one edit committed. HTTP 409 or 422 means no edit committed; check the top-level `code` and per-edit `edits` array before retrying. Max 100 edits per request. Insert-only structural batches may be reconciled sequentially by the server; `sequential_reconcile: true` means each successful insert was applied in request order. Stale rebase batches are supported only when every edit is a non-empty `old_string` replacement or exactly one non-empty text anchor; all matching is against the captured current markdown, so later stale-batch edits cannot target text inserted by earlier edits in the same request.
 
 #### When your edits affect comments
-Comment Docs anchors each comment to a block of text. If your PATCH rewrites a block, the server silently re-anchors the comment to the block that best matches the original text. If it can't (the new block is too different), the server returns `409 EDITS_AFFECT_COMMENTS` listing the affected comments and candidate new-block positions. Retry with `comment_outcomes` to declare what should happen to each:
+Comment Docs anchors each comment to a block of text. If your PATCH rewrites a block, the server silently re-anchors the comment to the block that best matches the original text. If it can't (the new block is too different), the server returns `409 EDITS_AFFECT_COMMENTS` listing the affected comments and candidate new-block positions. The response includes current `markdown` / `current_markdown`, proposed `candidate_markdown`, and rollback diagnostics such as `edits`, `failed_edit_indexes`, `likely_edit_indexes`, and, for stale text-target rebase, `base_revision`, `stale`, and `applied_to_revision`. Retry with `comment_outcomes` to declare what should happen to each:
 ```json
 {
   "edits": [...],
@@ -260,7 +262,7 @@ curl -s -X PATCH "https://comment.io/docs/{slug}" \
 ```
 Response (200): `{ "title": "New document title", "revision": N }` (revision unchanged from the prior GET).
 
-- Send `title` together with `edits` to rename and edit in one atomic request: `{"edits": [...], "title": "New title", "base_revision": REVISION}`. The response includes `markdown`, `revision`, and `title`. The audit log records both an `edit` and a `title_change` event.
+- Send `title` together with `edits` to rename and edit in one atomic request only when your body `base_revision` is current: `{"edits": [...], "title": "New title", "base_revision": REVISION}`. The response includes `markdown`, `revision`, and `title`. Stale body edits that also include `title` are not rebased; send title-only updates separately when you want body stale rebase. The audit log records both an `edit` and a `title_change` event.
 - Send `{"title": ""}` to clear the title (stored as `null`, displayed as the doc's slug).
 - Add `?dryRun=true` to preview a title-only update without committing — the response includes `"dry_run": true`.
 - Requires `editor` role, same as text edits.
@@ -447,9 +449,12 @@ Edit conflict responses (409/422 from PATCH) include `request_id`, `markdown`, `
 
 | Code | Status | Fix |
 |------|--------|-----|
-| `EDIT_STALE` | 409 | base_revision outdated — retry with returned revision |
-| `EDIT_NOT_FOUND` | 409 | old_string doesn't match — use returned markdown |
-| `EDIT_AMBIGUOUS` | 409 | old_string matches multiple places — include more context |
+| `EDIT_STALE` | 409 | base_revision outdated for a revision-scoped edit mode — retry with returned revision |
+| `EDIT_STALE_FUTURE` | 409 | body edit base_revision is ahead of the current document revision — GET latest and retry with that revision |
+| `EDIT_STALE_DURING_REBASE` / `EDIT_STALE_DURING_PATCH` | 409 | document changed during server validation — retry with returned current markdown/revision |
+| `EDIT_NOT_FOUND` | 409 | old_string or stale-rebase anchor doesn't match current markdown — use returned markdown |
+| `EDIT_AMBIGUOUS` | 409 | old_string or stale-rebase anchor matches multiple places — include more context |
+| `EDIT_OVERLAP` | 200/409 | per-edit stale batch result when edits overlap the same current text. If another edit applied, HTTP 200 keeps it; if all fail, HTTP 409. Retry with one edit per target or a narrower batch |
 | `EDIT_INTENT_AMBIGUOUS` | 409 | canonical CRDT reconciliation could not prove it would edit the intended occurrence — retry as a smaller edit with fresh markdown/revision |
 | `ANCHOR_NOT_FOUND` | 409 | anchor text not in document — re-read and retry |
 | `ANCHOR_AMBIGUOUS` | 409 | anchor matches multiple locations — use both anchors or more context |
@@ -470,7 +475,7 @@ Edit conflict responses (409/422 from PATCH) include `request_id`, `markdown`, `
 | `INVALID_REPLY` | 400 | reply_to cannot be combined with suggestion — use quote instead |
 
 ## Limitations
-- The editor does not support raw HTML. HTML tags and comments (e.g. `<!-- ... -->`, `<div>`) in edits return `422 INVALID_MARKDOWN`; escape them as literal text if they belong in the document.
+- The editor does not support raw HTML. HTML tags and comments (e.g. `<!-- ... -->`, `<div>`) in edits return `422 INVALID_MARKDOWN`; escape them as literal text if they belong in the document. Standalone `<br />` lines from GET are the exception: they represent empty paragraph spacers and can be sent back in PATCH markdown.
 
 ## Additional notes
 - **When sharing a document link with a user, always use `share_url`** (e.g. `https://comment.io/d/{slug}?token={token}`). Links without the token will not work.
