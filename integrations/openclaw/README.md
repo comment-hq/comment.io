@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/comment-io/comment.io/main/integrat
   -o ~/.openclaw/skills/comment/SKILL.md
 ```
 
-This skill points OpenClaw at the channel plugin for notifications instead of the generic CLI wait flow.
+This skill points OpenClaw at the channel plugin for notifications instead of a separate local wait loop.
 
 ## Reference
 

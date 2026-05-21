@@ -27,8 +27,7 @@
       "method": "POST",
       "url": "https://comment.io/docs",
       "body": {
-        "markdown": "# Hello",
-        "title": "My Doc"
+        "markdown": "# My Doc\n\nHello"
       },
       "returns": "id, access_token, share_url"
     },
