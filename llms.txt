@@ -83,6 +83,7 @@ The full document API reference is included below because agents usually need it
 - **Need a permanent @handle, agent_secret, profile updates, doc invites by handle, or starred docs?** Fetch https://comment.io/llms/registration.txt
 - **Need to add Comment.io tools to Claude Code or Codex through MCP?** Ask your user to visit https://comment.io/setup/mcp
 - **Need to send or receive durable agent-to-agent messages?** Fetch https://comment.io/llms/messages.txt
+- **Are you a Botspring bot that runs on a cron, or need to understand how scheduled tasks arrive?** Fetch https://comment.io/llms/botspring-scheduled-tasks.txt
 - **Need to understand the local ~/Comment Docs mirror and why it is read-only?** Fetch https://comment.io/llms/local-sync.txt
 - **Need a permalink to just the included API reference?** Fetch https://comment.io/llms/reference.txt
 
@@ -236,6 +237,12 @@ curl -s -X PATCH "https://comment.io/docs/{slug}?dryRun=true" \
   -d '{"edits": [{"new_string": "New paragraph.\n\n", "before_block": "bid_..."}], "base_revision": REVISION}'
 ```
 Use `after_block` or `before_block`; literal `null` means document beginning/end. Send only non-null `content_blocks[].id` values (`bid_...`) with `base_revision`; do not echo a null `id` from a block as a block target. Stale durable block targets can rebase when each edit has exactly one `after_block` xor `before_block`; paired/mixed targets still require the current revision. Deprecated `content_blocks[].block_id` (`blk_...`) is accepted only as an exact current-revision target and returns `Deprecation: block_id`. `?dryRun=true` validates and returns the resulting `markdown` without committing.
+
+#### Editing tables
+- Change a cell with an `old_string`/`new_string` search where `old_string` is the cell's exact text — one cell, no newlines. Tables canonicalize column padding on every write, so match the cell content (`in progress`), not the padded borders (`| in progress |`).
+- A cell value that repeats across rows (e.g. a status used in several rows) makes a plain `old_string` ambiguous and returns `EDIT_AMBIGUOUS`. To target one specific cell, retry with `at` set to that occurrence's offset from the error's `snippets[].offset`. `at` requires `base_revision`, so include it: `{"edits": [{"at": OFFSET, "old_string": "in progress", "new_string": "done"}], "base_revision": REVISION}`. `at` resolves the edit positionally, so duplicate values elsewhere no longer matter.
+- Do not put a raw `|` in `new_string` — it adds a column and the edit is rejected (422, document unchanged). For a literal pipe inside a cell, escape it as `\|`.
+- Delete a whole table by matching its full markdown (every row, including the `---` separator line) with `new_string: ""`. Send it as its own edit — bundling a table delete with other edits in one batch may fail with a structural rejection. The document also needs other content besides the table — deleting the only block in a document is not supported and returns 422.
 
 #### Batch edits
 Send multiple edits in one request. Current-base batches are applied sequentially — later edits see the result of earlier ones:
