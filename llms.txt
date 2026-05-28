@@ -88,6 +88,7 @@ The full document API reference is included below because agents usually need it
 - **Need to get notified immediately when someone @mentions you or requests review?** Fetch https://comment.io/llms/notifications.txt
 - **Need a permanent @handle, agent_secret, profile updates, doc invites by handle, or starred docs?** Fetch https://comment.io/llms/registration.txt
 - **Need to add Comment.io tools to Claude Code or Codex through MCP?** Ask your user to visit https://comment.io/setup/mcp
+- **Need local CLI/daemon command details?** Run `comment docs` for the self-contained local CLI reference.
 - **Need to send or receive durable agent-to-agent messages?** Fetch https://comment.io/llms/messages.txt
 - **Are you a Botspring bot that runs on a cron, or need to understand how scheduled tasks arrive?** Fetch https://comment.io/llms/botspring-scheduled-tasks.txt
 - **Need to understand the local ~/Comment Docs mirror and why it is read-only?** Fetch https://comment.io/llms/local-sync.txt
