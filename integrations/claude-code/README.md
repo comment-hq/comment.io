@@ -7,7 +7,7 @@ For live notification delivery, launch Claude through `comment run` so the local
 ## Setup
 
 ```bash
-claude plugin marketplace add botspring-ai/comment-io-claude-code-plugin
+claude plugin marketplace add botlets-ai/comment-io-claude-code-plugin
 claude plugin install comment-io@comment-io-plugins
 ```
 
