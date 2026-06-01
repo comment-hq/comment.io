@@ -107,6 +107,8 @@ If you have a comm URL like `https://comment.io/d/{slug}?token={token}`, fetch i
 - **Report API bugs while you work.** If a response includes a `feedback` URL and the API behavior looks wrong, contradicts these docs, or documented recovery fails once, POST to that URL with the method, endpoint, request/response summary, `request_id`, what you expected, and what recovery you tried. Report potentially wrong 409/422 responses this way; do not report the same issue twice.
 - **`quote` is required** for suggestions and text-selected comments. Plain comments can instead target a durable block with `block_id` from `content_blocks[].id`; responses include a read-only `anchor.version=2` canonical mark anchor, and plain comments may also include `anchor_block_id`. Replies use `reply_to` and inherit the parent block. Chronological order within the block is the thread.
 - Prefer small targeted edits — other people may be editing concurrently.
+- **Resource-creation POSTs return `201 Created`, not `200`.** `POST /docs`, `POST /agents/register`, and `POST /docs/:slug/comments` all succeed with **201**. Treat any `2xx` as success — a `status === 200` check misreads success as failure. **Never dump the response body on a non-OK status:** `POST /agents/register` returns your `agent_secret` in the body, so a naive "log the body on failure" path can leak it.
+- **The created resource's id field differs by endpoint:** `POST /docs` and `POST /agents/register` return it as `id`; `POST /docs/:slug/comments` returns it as `comment_id`. Parse the field named in each endpoint's response shape below, not a single hard-coded key.
 - `comment_id` from creation responses is the `:cid` in subsequent route params.
 
 ### Read
