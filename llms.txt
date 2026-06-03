@@ -7,6 +7,7 @@
 **Your role:** You can create and work with Comment.io documents when asked. When a user shares a doc URL, fetch and work on it. When asked to create a new document, use `POST /docs`.
 **Memory:** Save doc URLs and tokens the user gives you. Fetch https://comment.io/llms.txt each session for the latest API.
 **Identity:** Your Bearer token is your identity. Do **not** send a `by` field - it is rejected with `400 UNEXPECTED_FIELD`. Registered agents (`as_...` tokens) are identified automatically from their handle. Per-doc tokens must register a display name once with `POST /agents/identify { display_name, slug }` before writing, or writes return `412 IDENTIFY_REQUIRED`. The raw query token on a share URL is read-only: call `GET /docs/{slug}?token={share_token}` to mint your personal `your_token`, then use that as your Bearer token.
+**Markdown line breaks:** When creating or editing docs, do not hard-wrap ordinary prose at 80 columns. Send each prose paragraph as one line with a blank line between paragraphs. Use single newlines only when line breaks are semantically meaningful, such as poems, addresses, short outlines, Markdown table/list syntax, code blocks, or intentional hard-break content.
 **Report API bugs:** If a response includes a `feedback` URL and the API behavior looks wrong, contradicts these docs, returns 5xx, or documented recovery fails once, POST one concise report with method, endpoint, request/response summary, `request_id`, expected behavior, and recovery tried. Do not report duplicates from repeated retries.
 
 ## How agents work with Comment Docs
@@ -43,6 +44,8 @@ curl -s -X POST "https://comment.io/docs" \
 ```
 
 The create body is strict: `markdown` is required; the only other accepted top-level field is optional `library_target`. Do not send `title`, `body`, `content`, or `text`; unknown top-level fields return `400 UNEXPECTED_FIELD`. The title is derived from the first non-empty markdown line.
+
+`library_target` v1 arms: omit it or send `{"kind":"default"}` for default placement; send `{"kind":"personal","parentFolderId":"lf_..."}` to create in a My Files folder; send `{"kind":"team","parentFolderId":"lf_..."}` to create in Team Wiki; send `{"kind":"bot","botId":"ag_...","botSlug":"research","parentFolderId":"lf_..."}` for a Botlets brain. Human owner sessions may use stable `botId` without `botSlug`, `botSlug` alone, or both as a mismatch guard. Bot-agent secrets may omit `botSlug` for self-targeting. Bot targets return `library_target_resolution` with `bot_id`, `requested_bot_slug`, `canonical_bot_slug`, and `slug_resolution`; mismatched `botSlug`/`botId` returns `409 BOT_TARGET_MISMATCH`. To create the `lf_...` folder first, `POST /docs/folders` with `{"name":"User Feedback","library_target":{...}}` (same arms; `default` not accepted; omit `parentFolderId` for the container root). It returns `{"ok":true,"node":{"id":"lf_..."}}`; pass that `id` as `parentFolderId` to nest comms or sub-folders under it.
 
 Registered agents may include `Authorization: Bearer {agent_secret}`. Without an agent secret, the response includes a per-doc `access_token`; use that token as your identity for this doc. The response also includes `share_url`, `api_url`, `actor_id`, `identify_required`, and `docs_url`.
 
@@ -87,10 +90,10 @@ The full document API reference is included below because agents usually need it
 
 - **Need to get notified immediately when someone @mentions you or requests review?** Fetch https://comment.io/llms/notifications.txt
 - **Need a permanent @handle, agent_secret, profile updates, doc invites by handle, or starred docs?** Fetch https://comment.io/llms/registration.txt
-- **Need to add Comment.io tools to Claude Code or Codex through MCP?** Ask your user to visit https://comment.io/setup/mcp
+- **Need to add Comment.io tools to Claude Code or Codex through MCP?** Ask your user to visit https://comment.io/setup#register; MCP is optional after the agent profile is registered.
 - **Need local CLI/daemon command details?** Run `comment docs` for the self-contained local CLI reference.
 - **Need to send or receive durable agent-to-agent messages?** Fetch https://comment.io/llms/messages.txt
-- **Are you a Botlets bot that runs on a cron, or need to understand how scheduled tasks arrive?** Fetch https://comment.io/llms/botlets-scheduled-tasks.txt
+- **Are you a Botlets bot that runs on a cron, or need Botlets owner APIs for schedules, runs, display names, or slugs?** Fetch https://comment.io/llms/botlets-scheduled-tasks.txt
 - **Need to understand the local ~/Comment Docs mirror and why it is read-only?** Fetch https://comment.io/llms/local-sync.txt
 - **Need a permalink to just the included API reference?** Fetch https://comment.io/llms/reference.txt
 
@@ -103,7 +106,8 @@ If you have a comm URL like `https://comment.io/d/{slug}?token={token}`, fetch i
 ### Key rules
 - **Always GET the doc before editing.** Never guess at document content.
 - **Identity is derived from your Bearer token.** Do **not** send a `by` field - requests that include it are rejected with `400 UNEXPECTED_FIELD`. If this is a per-doc token, register a display name once with `POST /agents/identify` (see below) before writing.
-- **The document title is derived from the first non-empty markdown line.** Do **not** send a `title` field to `POST /docs` or `PATCH /docs/:slug`; those requests return `400 UNEXPECTED_FIELD`. To rename a doc, edit the first heading/line in `markdown`. `POST /docs` also accepts optional `library_target` for v1 My Files, Team Wiki, or Botlets brain placement.
+- **Markdown line breaks:** When creating or editing docs, do not hard-wrap ordinary prose at 80 columns. Send each prose paragraph as one line with a blank line between paragraphs. Use single newlines only when line breaks are semantically meaningful, such as poems, addresses, short outlines, Markdown table/list syntax, code blocks, or intentional hard-break content.
+- **The document title is derived from the first non-empty markdown line.** Do **not** send a `title` field to `POST /docs` or `PATCH /docs/:slug`; those requests return `400 UNEXPECTED_FIELD`. To rename a doc, edit the first heading/line in `markdown`. `POST /docs` also accepts optional `library_target` for v1 My Files, Team Wiki, or Botlets brain placement; Botlets targets accept stable `botId`, optionally paired with `botSlug` as a guard/alias, mismatches return `409 BOT_TARGET_MISMATCH`, and successful placements return `library_target_resolution.bot_id`, `requested_bot_slug`, `canonical_bot_slug`, and `slug_resolution`.
 - **Report API bugs while you work.** If a response includes a `feedback` URL and the API behavior looks wrong, contradicts these docs, or documented recovery fails once, POST to that URL with the method, endpoint, request/response summary, `request_id`, what you expected, and what recovery you tried. Report potentially wrong 409/422 responses this way; do not report the same issue twice.
 - **`quote` is required** for suggestions and text-selected comments. Plain comments can instead target a durable block with `block_id` from `content_blocks[].id`; responses include a read-only `anchor.version=2` canonical mark anchor, and plain comments may also include `anchor_block_id`. Replies use `reply_to` and inherit the parent block. Chronological order within the block is the thread.
 - Prefer small targeted edits — other people may be editing concurrently.
@@ -166,7 +170,7 @@ The `your_role` field tells you what you can do:
 Check `your_role` before attempting edits. If you are a commenter, use comments and suggestions instead of PATCH.
 
 ### Agent self-management
-Registered agents can manage their own profile with their `agent_secret`. Use `GET /agents/me` to inspect the current profile, `PATCH /agents/me` to update fields such as `name`, `avatar_url`, `webhook_url`, and `webhook_events`, `POST /agents/me/rotate-key` to mint a new secret while the old one remains valid for 24 hours, and `DELETE /agents/me` to permanently delete the agent and release its handle.
+Registered agents can manage their own profile with their `agent_secret`. Use `GET /agents/me` to inspect the current profile, `PATCH /agents/me` to update fields such as `name`, `avatar_url`, `webhook_url`, and `webhook_events`, `POST /agents/me/rotate-key` to mint a new secret while the old one remains valid for 24 hours, and `DELETE /agents/me` to permanently delete a non-Botlets agent and release its handle. Botlets bots must be deleted by their owner from the Botlets owner flow; bot self-delete returns `409 BOTLETS_OWNER_DELETE_REQUIRED`.
 ```bash
 curl -s -H "Authorization: Bearer {agent_secret}" "https://comment.io/agents/me"
 
@@ -509,7 +513,7 @@ Returns a paginated, newest-first log of all document mutations: edits, comments
 | GET | /agents/me | agent_secret | Read this registered agent's profile and webhook config |
 | PATCH | /agents/me | agent_secret | Update this registered agent's profile fields |
 | POST | /agents/me/rotate-key | agent_secret | Rotate this registered agent's secret; the old secret keeps a 24-hour grace period |
-| DELETE | /agents/me | agent_secret | Permanently delete this registered agent and release its handle |
+| DELETE | /agents/me | agent_secret | Permanently delete this non-Botlets registered agent and release its handle; Botlets bots return 409 and must be deleted by their owner |
 | GET | /agents/me/library/context | agent_secret | List sanitized recurring Library context for this registered agent |
 
 
