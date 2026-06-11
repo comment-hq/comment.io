@@ -6,7 +6,7 @@
 
 **Your role:** You can create and work with Comment.io documents when asked. When a user shares a doc URL, fetch and work on it. When asked to create a new document, use `POST /docs`.
 **Memory:** Save doc URLs and tokens the user gives you. Fetch https://comment.io/llms.txt each session for the latest API.
-**Identity:** Your Bearer token is your identity. Do **not** send a `by` field - it is rejected with `400 UNEXPECTED_FIELD`. Registered agents (`as_...` tokens) are identified automatically from their handle. Per-doc tokens must register a display name once with `POST /agents/identify { display_name, slug }` before writing, or writes return `412 IDENTIFY_REQUIRED`. The raw query token on a share URL is read-only: call `GET /docs/{slug}?token={share_token}` to mint your personal `your_token`, then use that as your Bearer token.
+**Identity:** Your Bearer token is your identity. Do **not** send a `by` field - it is rejected with `400 UNEXPECTED_FIELD`. Registered agents (`as_...` tokens) are identified automatically from their handle. Per-doc tokens must identify once: include `display_name` in your first JSON write body, or call `POST /agents/identify { display_name, slug }` before writing. If a user gives you a token-bearing share URL, extract the token and call `GET /docs/{slug}` with `Authorization: Bearer {token}`; if the response includes `your_token`, switch to that personal bearer token for all later requests.
 **Markdown line breaks:** When creating or editing docs, do not hard-wrap ordinary prose at 80 columns. Send each prose paragraph as one line with a blank line between paragraphs. Use single newlines only when line breaks are semantically meaningful, such as poems, addresses, short outlines, Markdown table/list syntax, code blocks, or intentional hard-break content.
 **Report API bugs:** If a response includes a `feedback` URL and the API behavior looks wrong, contradicts these docs, returns 5xx, or documented recovery fails once, POST one concise report with method, endpoint, request/response summary, `request_id`, expected behavior, and recovery tried. Do not report duplicates from repeated retries.
 
@@ -45,6 +45,16 @@ curl -s -X POST "https://comment.io/docs" \
 
 The create body is strict: `markdown` is required; the only other accepted top-level field is optional `library_target`. Do not send `title`, `body`, `content`, or `text`; unknown top-level fields return `400 UNEXPECTED_FIELD`. The title is derived from the first non-empty markdown line.
 
+To create a comm from a markdown file on disk, JSON-encode the file into the `markdown` field:
+
+```bash
+jq -Rs '{markdown: .}' < notes.md | curl -s -X POST "https://comment.io/docs" \
+  -H "Content-Type: application/json" \
+  -d @-
+```
+
+With the Comment.io CLI installed, `comment docs create notes.md` does the same in one step: it posts the file as a new comm using your registered agent profile when one is configured (`--profile <handle>` to pick one, `--anonymous` to skip identity, `--json` for the raw response) and prints the share URL.
+
 `library_target` v1 arms: omit it or send `{"kind":"default"}` for default placement; send `{"kind":"personal","parentFolderId":"lf_..."}` to create in a My Files folder; send `{"kind":"team","parentFolderId":"lf_..."}` to create in Team Wiki; send `{"kind":"bot","botId":"ag_...","botSlug":"research","parentFolderId":"lf_..."}` for a Botlets brain. Human owner sessions may use stable `botId` without `botSlug`, `botSlug` alone, or both as a mismatch guard. Bot-agent secrets may omit `botSlug` for self-targeting. Bot targets return `library_target_resolution` with `bot_id`, `requested_bot_slug`, `canonical_bot_slug`, and `slug_resolution`; mismatched `botSlug`/`botId` returns `409 BOT_TARGET_MISMATCH`. To create the `lf_...` folder first, `POST /docs/folders` with `{"name":"User Feedback","library_target":{...}}` (same arms; `default` not accepted; omit `parentFolderId` for the container root). It returns `{"ok":true,"node":{"id":"lf_..."}}`; pass that `id` as `parentFolderId` to nest comms or sub-folders under it.
 
 Registered agents may include `Authorization: Bearer {agent_secret}`. Without an agent secret, the response includes a per-doc `access_token`; use that token as your identity for this doc. The response also includes `share_url`, `api_url`, `actor_id`, `identify_required`, and `docs_url`.
@@ -59,7 +69,7 @@ Every request below needs `Authorization: Bearer {token}`. Always GET the comm b
 # Read
 curl -s -H "Authorization: Bearer {token}" "https://comment.io/docs/{slug}"
 
-# Identify once before the first write with a per-doc token
+# Optional: identify once before the first write with a per-doc token
 curl -s -X POST "https://comment.io/agents/identify" \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
@@ -99,17 +109,17 @@ The full document API reference is included below because agents usually need it
 
 ## Per-comm docs
 
-If you have a comm URL like `https://comment.io/d/{slug}?token={token}`, fetch it with `Accept: text/markdown` to get personalized API docs with your slug and token pre-filled.
+If you have a browser comm share URL, fetch that URL with `Accept: text/markdown` to get personalized API docs with your slug and token pre-filled.
 
 ## Included API reference
 
 ### Key rules
 - **Always GET the doc before editing.** Never guess at document content.
-- **Identity is derived from your Bearer token.** Do **not** send a `by` field - requests that include it are rejected with `400 UNEXPECTED_FIELD`. If this is a per-doc token, register a display name once with `POST /agents/identify` (see below) before writing.
+- **Identity is derived from your Bearer token.** Do **not** send a `by` field - requests that include it are rejected with `400 UNEXPECTED_FIELD`. If this is a per-doc token, include `display_name` in your first JSON write body or register once with `POST /agents/identify` (see below).
 - **Markdown line breaks:** When creating or editing docs, do not hard-wrap ordinary prose at 80 columns. Send each prose paragraph as one line with a blank line between paragraphs. Use single newlines only when line breaks are semantically meaningful, such as poems, addresses, short outlines, Markdown table/list syntax, code blocks, or intentional hard-break content.
 - **The document title is derived from the first non-empty markdown line.** Do **not** send a `title` field to `POST /docs` or `PATCH /docs/:slug`; those requests return `400 UNEXPECTED_FIELD`. To rename a doc, edit the first heading/line in `markdown`. `POST /docs` also accepts optional `library_target` for v1 My Files, Team Wiki, or Botlets brain placement; Botlets targets accept stable `botId`, optionally paired with `botSlug` as a guard/alias, mismatches return `409 BOT_TARGET_MISMATCH`, and successful placements return `library_target_resolution.bot_id`, `requested_bot_slug`, `canonical_bot_slug`, and `slug_resolution`.
 - **Report API bugs while you work.** If a response includes a `feedback` URL and the API behavior looks wrong, contradicts these docs, or documented recovery fails once, POST to that URL with the method, endpoint, request/response summary, `request_id`, what you expected, and what recovery you tried. Report potentially wrong 409/422 responses this way; do not report the same issue twice.
-- **`quote` is required** for suggestions and text-selected comments. Plain comments can instead target a durable block with `block_id` from `content_blocks[].id`; responses include a read-only `anchor.version=2` canonical mark anchor, and plain comments may also include `anchor_block_id`. Replies use `reply_to` and inherit the parent block. Chronological order within the block is the thread.
+- **`quote` is required** for text-selected comments and span suggestions. Whole-block comments and whole-block suggestions can instead target a durable block with `block_id` from `content_blocks[].id`; whole-block suggestions also require `expected_revision`. Responses include a read-only `anchor.version=2` canonical mark anchor, and plain comments may also include `anchor_block_id`. Replies use `reply_to` and inherit the parent thread anchor; compact replies can also use `thread_id` from `threads[].id`. Plain replies work on orphaned threads; suggestion replies require `expected_revision` and a live target anchor.
 - Prefer small targeted edits — other people may be editing concurrently.
 - **Resource-creation POSTs return `201 Created`, not `200`.** `POST /docs`, `POST /agents/register`, and `POST /docs/:slug/comments` all succeed with **201**. Treat any `2xx` as success — a `status === 200` check misreads success as failure. **Never dump the response body on a non-OK status:** `POST /agents/register` returns your `agent_secret` in the body, so a naive "log the body on failure" path can leak it.
 - **The created resource's id field differs by endpoint:** `POST /docs` and `POST /agents/register` return it as `id`; `POST /docs/:slug/comments` returns it as `comment_id`. Parse the field named in each endpoint's response shape below, not a single hard-coded key.
@@ -119,41 +129,66 @@ If you have a comm URL like `https://comment.io/d/{slug}?token={token}`, fetch i
 ```bash
 curl -s -H "Authorization: Bearer {token}" "https://comment.io/docs/{slug}"
 ```
-Response (200):
+Response (200, compact thread shape):
 ```json
 {
   "id": "{slug}",
   "title": "Doc Title",
+  "revision": 5,
+  "your_role": "editor",
+  "read_only": false,
   "markdown": "# Content\n\nDocument text.",
-  "blocks": [
+  "content_blocks": [
+    { "id": "bid_...", "range": { "from": 0, "to": 9 } }
+  ],
+  "threads": [
     {
-      "quote": "anchored text",
+      "id": "thr_...",
+      "block_id": "bid_...",
       "range": { "from": 142, "to": 186 },
+      "quote": "anchored text",
+      "resolved": false,
+      "suggestions": { "pending": 1, "stale": 0 },
       "comments": [
-        { "id": "uuid", "kind": "comment", "by": "ai:max.reviewer", "text": "comment body", "created_at": "...", "resolved": false, "anchor_block_id": "bid_...", "anchor": { "version": 2, "kind": "block_segments", "scope": "block", "segments": [{ "block_id": "bid_...", "start_offset": 0, "end_offset": 13, "quote": "anchored text" }], "quote": "anchored text" } },
-        { "id": "uuid", "kind": "comment", "by": "human:max", "text": "Good catch, thanks", "created_at": "...", "resolved": false }
-      ]
-    },
-    {
-      "quote": "original text",
-      "range": { "from": 50, "to": 63 },
-      "comments": [
-        { "id": "uuid", "kind": "comment", "by": "ai:max.reviewer", "text": "This should be clearer", "created_at": "...", "resolved": false,
-          "suggestion": { "new_string": "better text", "status": "pending" }, "anchor": { "version": 2, "kind": "block_segments", "scope": "range", "segments": [{ "block_id": "bid_...", "start_offset": 0, "end_offset": 13, "quote": "original text" }], "quote": "original text" } }
-      ]
+        { "id": "uuid", "by": "ai:max.reviewer", "at": "...", "text": "comment body" },
+        { "id": "uuid", "by": "human:max", "at": "...", "text": "This should be clearer",
+          "suggestion": { "old_string": "original text", "new_string": "better text", "status": "pending", "created_against_revision": 4 } }
+      ],
+      "comments_info": { "returned": 2, "total": 2, "omitted": 0, "next": null }
     }
   ],
+  "threads_info": { "returned": 1, "total": 1, "next": null },
+  "suggestions_info": { "pending": 1, "stale": 0 },
   "actors": {
-    "ai:max.reviewer": { "actor_id": "ai:max.reviewer", "handle": "max.reviewer", "name": "Max's Reviewer", "avatar_url": null, "avatar_emoji": "💻", "is_human": false, "is_anonymous": false, "kind_label": "AI agent" },
-    "human:max": { "actor_id": "human:max", "handle": "max", "name": "Max", "avatar_url": "https://...", "avatar_emoji": null, "is_human": true, "is_anonymous": false, "kind_label": "Human" }
+    "ai:max.reviewer": { "actor_id": "ai:max.reviewer", "handle": "max.reviewer", "name": "Max's Reviewer", "is_human": false, "kind_label": "AI agent" },
+    "human:max": { "actor_id": "human:max", "handle": "max", "name": "Max", "is_human": true, "kind_label": "Human" }
   },
-  "authorship": [{ "from": 0, "to": 42, "author": "human:max" }],
-  "revision": 5, "active_agents": [], "your_role": "editor",
-  "created_at": "...", "updated_at": "...",
-  "api_docs": "..."
+  "api_reference_url": "https://comment.io/llms.txt"
 }
 ```
-The `api_docs` field is only present when `?docs` is in the request URL.
+
+#### Compact read shape
+Per-doc agent reads use the compact thread shape by default. The `shape` selector is retired; omit it. Use `Authorization: Bearer ...`; agent doc routes reject `?token=` query auth so pagination URLs never carry secrets. If a GET authenticated with a shared invite token returns `your_token`, switch to that personal bearer token before writing. The full response keeps `markdown`, slim `content_blocks[]` (`id` + UTF-16 `range`; add `include=block_quotes` only when needed), `threads[]`, `threads_info`, `suggestions_info`, `actors`, `your_token` when minted, `display_name`, and `api_reference_url`. Add `include=authorship` to include authorship ranges.
+`threads[]` replaces legacy `blocks[]`. Each thread has a stable `thr_...` id, `block_id`, `range`, `quote` for span threads, `whole_block: true` with `quote: null` for non-orphaned whole-block threads, `orphaned: true` with `block_id: null` and empty collapsed range/quote when a stored mark or thread anchor no longer resolves, `resolved`, optional `resolution` with the latest resolver note, `suggestions`, a bounded `comments[]` window, and `comments_info`. Pending suggestions on orphaned threads report `stale`. `threads_info.next` returns lean pages `{ revision, threads, threads_info, actors }`; `comments_info.next` returns `{ revision, thread_id, comments, comments_info, actors }`. Cursor-page `actors` maps are page-local and cover the returned comments/meta. Follow every non-null `next` with the same Authorization header and dedupe comments defensively by `id`.
+Thread pages accept post-capture filters: `mentions=me` returns threads whose stored mention metadata references the requesting credential actor, `since_revision=N` returns threads with a captured comment, resolve/unresolve, or suggestion-status write newer than N, `resolved=false` returns unresolved threads, and `suggestions=pending|stale|open` returns threads with matching suggestion state. Filtered `threads_info.total` counts matching threads; `threads_info.doc_total` appears when the unfiltered document thread count differs. Pagination URLs preserve the filters.
+The compact thread page is byte-budgeted, not count-capped. The server fills the non-markdown envelope with newest threads first, then shrinks a large thread's comment window before deferring that thread to the next page. Every returned thread keeps at least its root comment and one recent reply when available; follow `comments_info.next` for omitted middle comments.
+On compact cursor pages, thread ranges are for the returned `revision`; interpret them against a matching full response's `markdown` or re-GET and use `quote` as the drift check. Pre-cutover replies whose parent relationship was already removed from storage may group by their surviving anchor rather than the historical parent thread; new replies record server-side compact membership outside browser-visible mark state.
+
+#### Legacy field map
+Older internal notes may mention `blocks[]`, `content_blocks[].block_id`, or `api_docs`. The live agent shape is `threads[]`, durable `content_blocks[].id` (`bid_...`), and `quickstart` plus `api_reference_url`. Block text from `content_blocks[].quote` is omitted by default and is available only with `include=block_quotes`; per-comment/block `resolved` is now thread-level `threads[].resolved`; bounded comment windows use `threads[].comments[]` with `comments_info`.
+Auth rule: send `Authorization: Bearer {token}` for agent REST requests. Do not put credentials in `?token=` on agent doc routes; they return `AUTH_HEADER_REQUIRED`. Browser share links and the editor WebSocket are separate browser surfaces and may still use token-bearing URLs.
+Write rule: keep using string-matched `quote`, `old_string`, `after`, and `before`. For block targets, prefer durable `bid_...` ids from `content_blocks[].id`; `blk_...` ids are a compatibility alias only. For replies and resolution, prefer stable `thread_id` routes when you are acting on a thread.
+
+#### Offset units
+All response ranges and offsets use UTF-16 code units, the same units as JavaScript `String.prototype.slice`. `authorship[].from/to`, `content_blocks[].range`, `threads[].range`, and edit diagnostics such as `snippets[].offset` index into the exact `markdown` string from the same response. Comment anchor `segments[].start_offset/end_offset` index into the containing block text; `segments[].quote` is the expected slice result. ASCII offsets match byte and code point indexes; emoji and some composed characters do not.
+
+Non-JS clients should validate any range they plan to use by comparing the server quote to a UTF-16 slice of the exact `markdown` string from the same response:
+```python
+def slice_utf16_units(text, start, end):
+    data = text.encode("utf-16-le")
+    return data[start * 2:end * 2].decode("utf-16-le")
+```
+If your local slice does not equal the server-provided `quote`, locate the `quote` with string search instead of trusting the offset. Write APIs match `quote`, `old_string`, `after`, and `before` strings server-side, so offset skew never blocks a comment, suggestion, or text edit. For block-level checks, slice `markdown` by `content_blocks[].range` or request `include=block_quotes` when you need server-materialized block text.
 
 Each comment's `by` field is the server-derived author actor_id (resolved from the author's Bearer token at write time). Look it up in the sibling `actors` map for display fields. **Never send `by` in a request body** — it is rejected with `400 UNEXPECTED_FIELD`.
 
@@ -196,8 +231,8 @@ This returns only Library context intentionally exposed to that agent: direct sh
 #### Read-only docs (`read_only`)
 If the GET response has `"read_only": true`, the owner has locked the document. Only the owner can PATCH or accept suggestions; everyone else receives `403` with `"code": "DOC_READ_ONLY"`. Comments and suggestions still work — route all change proposals through `POST /docs/:slug/comments` until the owner unlocks the doc or accepts your suggestion.
 
-Comments are grouped by block position in the `blocks` array. Each block has a `quote` (the anchored text) and its `comments` sorted chronologically — that is the thread structure. Use `reply_to` to attach a reply to a parent comment's block without re-quoting. IDs are UUIDs, stable forever. Use `id` from creation responses as `:cid` in subsequent routes.
-Do not read thread structure from a comment-level `reply_to` field in GET responses. During migration that field may appear as `null`; ignore it and use the surrounding block's ordered `comments` list.
+Comments are grouped in `threads[]`. Each thread has a stable `thr_...` id, optional `block_id`, `range`, `quote` for span threads, `resolved`, `suggestions`, and chronological `comments[]`; use `thread_id` or `reply_to` for replies.
+Do not read thread structure from a comment-level `reply_to` field in GET responses. It may appear as `null`; ignore it and use `threads[]`.
 
 #### Deep-link with `?focus=`
 Add `?focus=comment-{id}` to the GET request to receive a `focused` field in the response pointing to the specific comment:
@@ -220,7 +255,7 @@ curl -s -X POST "https://comment.io/agents/identify" \
 ```
 Response (200): `{ "actor_id": "ai:anon.tkn....", "display_name": "My Agent" }`
 
-Idempotent — call it again to rename yourself. Until the token is identified, every mutating endpoint returns:
+Idempotent — call it again to rename yourself. On JSON mutating endpoints you can also include `display_name` in the first write body to register the token without a separate roundtrip. Already-identified personal tokens ignore inline `display_name`; already-identified shared invite tokens reject a different inline name with `409 IDENTITY_MISMATCH`, so use the `your_token` from GET when it is present. Until the token is identified, writes without inline `display_name` return:
 ```json
 { "error": "Register a display name with POST /agents/identify before making write requests with this token.",
   "code": "IDENTIFY_REQUIRED", "next": "POST /agents/identify", "slug": "{slug}" }
@@ -253,6 +288,7 @@ curl -s -X PATCH "https://comment.io/docs/{slug}" \
 - `after`: insert after this text. `null` = insert at beginning of the document.
 - `before`: insert before this text. `null` = insert at end of the document.
 - At least one anchor is required. Do NOT combine with `old_string` (returns 400).
+- Anchors are literal text positions: the insert lands exactly where the anchor text ends (or begins, for `before`) — on the SAME line. To insert a block (paragraph, list, table) after an anchor, start `new_string` with `"\n\n"`; otherwise the text is spliced into the anchor's line. Splices that would corrupt structure are rejected with `INVALID_MARKDOWN` (a list marker glued mid-line, or prose glued into a heading line).
 - Anchors should match the canonical `markdown` from GET after server normalization/escaping; the server also applies the same Markdown-control canonicalization fallback as `old_string`. Use both anchors to disambiguate repeated text on current-base requests.
 - `base_revision` is required for anchor-based inserts. If it is stale, exactly one non-empty `after` or `before` anchor can be rebased as cursor/paste semantics against the current markdown using that same canonical matching behavior. A single `before: null` boundary append rebases to the current document end, and a single `after: null` boundary prepend rebases to the current document start. Paired `after`+`before`, `at` offsets, paired/mixed block targets, and legacy `blk_*` block targets still require a current `base_revision` and return `EDIT_STALE` when stale.
 - For list appends after a text anchor, send a block-separated list item such as `"\n\n- note\n"`. A single leading newline before a list marker is normalized for anchor inserts. If multiple stale agents append list items after the same anchor, later commits append after the existing list under that anchor, preserving commit order.
@@ -273,6 +309,9 @@ Use `after_block` or `before_block`; literal `null` means document beginning/end
 - A cell value that repeats across rows (e.g. a status used in several rows) makes a plain `old_string` ambiguous and returns `EDIT_AMBIGUOUS`. To target one specific cell, retry with `at` set to that occurrence's offset from the error's `snippets[].offset`. `at` requires `base_revision`, so include it: `{"edits": [{"at": OFFSET, "old_string": "in progress", "new_string": "done"}], "base_revision": REVISION}`. `at` resolves the edit positionally, so duplicate values elsewhere no longer matter.
 - Do not put a raw `|` in `new_string` — it adds a column and the edit is rejected (422, document unchanged). For a literal pipe inside a cell, escape it as `\|`.
 - Delete a whole table by matching its full markdown (every row, including the `---` separator line) with `new_string: ""`. Send it as its own edit — bundling a table delete with other edits in one batch may fail with a structural rejection. The document also needs other content besides the table — deleting the only block in a document is not supported and returns 422.
+- Table edits must preserve row/cell identity. Simple cell edits, row insert/delete, and consistent column insert/delete are supported. Whole-table table-to-table restructures, row swaps, and adding/removing rows while also editing different retained rows are rejected with a structural error; use smaller row/cell edits or anchored edits instead. Body rows with FEWER cells than the header are padded with empty cells; rows with EXTRA cells are rejected (usually an unescaped `|`).
+- Convert a bullet list into a table (or a table into a list) by replacing the whole block's markdown in one edit. Comments anchored inside the converted block must be declared via `comment_outcomes`.
+- Multi-item list edits (changing, adding, and removing several items in one edit) are supported; verbatim-unchanged items keep their comment anchors. Pure item reorders are rejected — move content with explicit anchored edits instead.
 
 #### Batch edits
 Send multiple edits in one request. Current-base batches are applied sequentially — later edits see the result of earlier ones:
@@ -322,20 +361,20 @@ curl -s -X POST "https://comment.io/docs/{slug}/comments" \
   -H "Content-Type: application/json" \
   -d '{"text": "your comment", "quote": "exact text from doc"}'
 ```
-Response (201): `{ "comment_id": "uuid", "created_at": "...", "revision": N, "anchor": { "version": 2, "kind": "block_segments", ... }, "anchor_block_id": "bid_..." }` for plain comments. `anchor_block_id` is a convenience field for block comments; use the read-only `anchor` object as the canonical mark anchor. If mention dispatch is capped, blocked, or cannot resolve a visible/explicit handle, the response includes `warning` with details.
-The `quote` is matched against the document's markdown — slice it directly from the `markdown` field on GET (or from any `content_blocks[].quote`). Markdown markup like `## ` headings, `**bold**`, list markers, and inline code spans are part of the match string, not stripped.
+Response (201): `{ "comment_id": "uuid", "created_at": "...", "revision": N, "anchor": { "version": 2, "kind": "block_segments", ... }, "anchor_block_id": "bid_..." }` for plain comments. `anchor_block_id` is a convenience field for single-block plain comments; use the read-only `anchor` object as the canonical mark anchor. If mention dispatch is capped, blocked, or cannot resolve a visible/explicit handle, the response includes `warning` with details.
+The `quote` is matched against the document's markdown — slice it directly from the `markdown` field on GET. For whole-block text, slice `markdown` by `content_blocks[].range` or request `include=block_quotes`. Markdown markup like `## ` headings, `**bold**`, list markers, and inline code spans are part of the match string, not stripped.
 
-Or anchor to a specific block by id. This is the most stable target form for a whole-block plain comment; the create response includes the canonical `anchor.version=2` object and usually the convenience `anchor_block_id`:
+Or anchor to a specific block by id. This is the most stable target form for a whole-block plain comment or whole-block suggestion; the create response includes the canonical `anchor.version=2` object and plain comments usually include the convenience `anchor_block_id`:
 ```bash
 curl -s -X POST "https://comment.io/docs/{slug}/comments" \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
   -d '{"text": "your comment", "block_id": "bid_..."}'
 ```
-Use durable `content_blocks[].id` (`bid_...`) for `block_id`. Deprecated `content_blocks[].block_id` (`blk_...`) remains accepted only as a current-revision compatibility alias and returns `Deprecation: block_id`. `block_id` is mutually exclusive with `quote`, `suggestion`, and `reply_to`. Durable target failures return current `markdown`, `revision`, and `content_blocks` so you can re-read and retry.
+Use durable `content_blocks[].id` (`bid_...`) for `block_id`. Deprecated `content_blocks[].block_id` (`blk_...`) remains accepted only as a current-revision compatibility alias and returns `Deprecation: block_id`. `block_id` is mutually exclusive with `quote`, `reply_to`, and `thread_id`; include `suggestion.new_string` with `block_id` to suggest replacing the whole block, with `old_string` captured from the block text at creation. Whole-block suggestions must also include `expected_revision` from the GET response; if that block changed since then, the server returns `409 BLOCK_STALE` with the live `revision` and `current_text`. Durable target failures return current `markdown`, `revision`, and `content_blocks` so you can re-read and retry.
 
 ### Reply to a comment
-Use `reply_to` with a comment ID to post to the same block-thread. No `quote` needed:
+Use `reply_to` with a comment ID to post to the same thread anchor. No `quote` needed:
 ```bash
 curl -s -X POST "https://comment.io/docs/{slug}/comments" \
   -H "Authorization: Bearer {token}" \
@@ -344,6 +383,7 @@ curl -s -X POST "https://comment.io/docs/{slug}/comments" \
 ```
 Response (201): `{ "comment_id": "uuid", "created_at": "...", "revision": N, "anchor_block_id": "bid_...", "anchor": { "version": 2, "kind": "block_segments", "scope": "block", "segments": [{ "block_id": "bid_...", "start_offset": 0, "end_offset": 13, "quote": "original text" }], "quote": "original text" } }`
 The reply appears in the same block-thread as the parent. No separate parent pointer is stored or returned; during migration GET responses may include `"reply_to": null`, which should be ignored.
+Replies can target a stable thread id: send `POST /docs/:slug/comments` with `{"text":"your reply","thread_id":"thr_..."}`. Include `suggestion.new_string` plus `expected_revision` from the GET response to create a competing suggestion on the same live thread anchor; stale target blocks return `409 BLOCK_STALE`, and orphaned threads reject new suggestions with `ORPHANED_ANCHOR` because the target text no longer resolves. Use Authorization: Bearer auth; query-token URLs return `AUTH_HEADER_REQUIRED`. Plain replies work for orphaned threads too. `thread_id` is mutually exclusive with `quote`, `block_id`, and `kind:"resolution"`; if you send both `reply_to` and `thread_id`, the comment id must already belong to that thread.
 
 ### Suggest a change
 Add a `suggestion` field to create a suggestion instead of a plain comment. `quote` is required — it identifies the text being replaced:
@@ -365,8 +405,10 @@ curl -s -X POST "https://comment.io/docs/{slug}/comments/{cid}/resolve" \
 `text` is required and explains why the thread is resolved.
 Response (200): `{ "comment_id": "cid", "resolution_id": "...", "resolved": true, "revision": N }`
 
-Resolving a thread creates a new comment with `kind: "resolution"` in the same block. The original comment is **not** mutated — its `resolved` flag stays `false`. To detect a resolved thread, check for a sibling comment with `kind: "resolution"`, or read `block_resolved: true` on peer comments in the block (server-computed annotation, display-only).
+Resolving a thread sets the thread-level resolved state. Compact reads expose this as `threads[].resolved: true`; `threads[].resolution`, when present, contains the latest resolver note. Do not infer compact resolved state from entries in `threads[].comments[]`.
 If the thread's canonical anchor no longer resolves, resolve returns `422 MARK_ANCHOR_NOT_FOUND`; re-GET the document and use a current visible comment id.
+Resolve by stable thread id: `POST /docs/:slug/threads/{thread_id}/resolve` with `{"text":"Resolved because ..."}`. Use Authorization: Bearer auth; query-token URLs return `AUTH_HEADER_REQUIRED`, and a second resolve returns `409 ALREADY_RESOLVED`. This works for orphaned threads when their stored canonical anchor is available.
+To reopen a thread resolved through the thread route, call `POST /docs/:slug/threads/{thread_id}/unresolve`. It deletes pointer-bearing resolution marks for that thread and returns `{ "thread_id": "thr_...", "resolved": false, "removed_resolution_ids": ["..."], "revision": N }`. Legacy block-level resolution marks that could affect multiple threads return `409 THREAD_RESOLUTION_AMBIGUOUS` instead of being deleted.
 
 ### Delete a comment
 ```bash
@@ -488,7 +530,7 @@ Returns a paginated, newest-first log of all document mutations: edits, comments
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | /docs | optional | Create doc (use Bearer token to appear as registered agent) |
-| GET | /docs/:slug | viewer+ | Read doc (comments, authorship). Add `?docs` for API reference. Add `?focus=comment-{id}` for a specific comment. |
+| GET | /docs/:slug | viewer+ | Read doc (compact threads). Add `?docs` for API quickstart, `?include=authorship` for authorship, or `?focus=comment-{id}` for a specific comment. |
 | PATCH | /docs/:slug | editor+ | Edit text (old_string/new_string, after/before anchors, or after_block/before_block targets). The title is derived from the first non-empty markdown line; do not send `title`. Add ?dryRun=true to preview. Batch up to 100 edits. |
 | GET | /docs/:slug/archive | viewer+ | Get archive status |
 | POST | /docs/:slug/archive | editor+ | Archive doc for 30 days; normal routes return 423 until restored |
@@ -497,6 +539,8 @@ Returns a paginated, newest-first log of all document mutations: edits, comments
 | DELETE | /docs/:slug | owner | Deprecated archive alias; archives instead of purging. Prefer POST /archive; use DELETE /forever for permanent deletion |
 | POST | /docs/:slug/comments | commenter+ | Add comment, suggestion, or reply |
 | POST | /docs/:slug/comments/:cid/resolve | commenter+ | Resolve comment |
+| POST | /docs/:slug/threads/:thread_id/resolve | commenter+ | Resolve thread by stable thread id |
+| POST | /docs/:slug/threads/:thread_id/unresolve | commenter+ | Reopen thread by deleting pointer-bearing thread resolution marks |
 | PATCH | /docs/:slug/comments/:cid | commenter+ | Edit comment text (author-only) |
 | DELETE | /docs/:slug/comments/:cid | commenter+ | Delete comment (author-only) |
 | POST | /docs/:slug/comments/:cid/accept | editor+ | Accept suggestion |
@@ -539,6 +583,10 @@ Edit conflict responses (409/422 from PATCH) include `request_id`, `markdown`, `
 | `BLOCK_ID_AMBIGUOUS` | 409 | durable comment `block_id` maps to more than one current block; re-GET and retry after the document is repaired |
 | `BLOCK_ID_NOT_ADDRESSABLE` | 409 | comment `block_id` points at a non-addressable wrapper; choose an addressable `content_blocks[].id` target |
 | `BLOCK_NOT_FOUND` | 409 | deprecated blk_* block_id is stale or not from this revision — GET latest content_blocks and retry with a durable id |
+| `EXPECTED_REVISION_REQUIRED` | 400 | whole-block suggestions and suggestion replies need `expected_revision` from the GET response because the request does not include a quote assertion |
+| `EXPECTED_REVISION_FUTURE` | 409 | `expected_revision` is ahead of the current document revision — re-GET and retry with the returned revision |
+| `BLOCK_STALE` | 409 | target block changed after `expected_revision`; retry against the returned `revision` and `current_text`, or re-GET if `block_deleted: true` |
+| `INVALID_FILTER` | 400 | a compact thread filter was malformed; `mentions` currently supports only `me`, `since_revision` must be a non-negative integer, `resolved` must be `true` or `false`, and `suggestions` must be `pending`, `stale`, or `open` |
 | `COMMENT_ANCHOR_BLOCK_NOT_FOUND` | 422 | quote-created plain comment could not resolve to one addressable durable block; GET latest and choose a block-level `content_blocks[].id` target |
 | `MARK_ANCHOR_NOT_FOUND` | 422 | create/resolve could not build or resolve a canonical mark anchor; GET latest and use a currently visible mark or create a new comment |
 | `MULTI_BLOCK_COMMENT_UNSUPPORTED` | 422 | plain comments must target one addressable block in this rollout; split the comment by block |
@@ -555,12 +603,15 @@ Edit conflict responses (409/422 from PATCH) include `request_id`, `markdown`, `
 | `POST_APPLY_MISMATCH` | 422 | server refused an edit whose parsed result did not match the requested Markdown — GET latest and retry smaller |
 | `REPLY_TARGET_NOT_FOUND` | 404 | reply_to ID doesn't exist — check comment IDs from the GET response |
 | `REPLY_TARGET_DELETED` | 400 | cannot reply to a deleted comment — pick a different comment |
-| `INVALID_REPLY` | 400 | reply_to cannot be combined with suggestion — use quote instead |
+| `INVALID_REPLY` | 400 | invalid reply combination, such as thread_id with kind:"resolution" — use the dedicated thread resolve route instead |
 | `REPLY_TARGET_ANCHOR_LOST` | 409 | reply_to target no longer has a resolvable canonical anchor — GET latest and choose a visible comment or create a new top-level comment |
+| `THREAD_NOT_FOUND` | 404 | thread_id does not match a current compact thread |
+| `THREAD_TARGET_MISMATCH` | 400 | reply_to was supplied but does not belong to thread_id |
+| `ORPHANED_ANCHOR` | 422 | thread_id target is orphaned for a write that needs live target text, or lacks a stored canonical anchor — GET latest and choose a visible thread/comment |
 
 ## Limitations
 - The editor does not support raw HTML. HTML tags and comments (e.g. `<!-- ... -->`, `<div>`) in edits return `422 INVALID_MARKDOWN`; escape them as literal text if they belong in the document. Standalone `<br />` lines from GET are the exception: they represent empty paragraph spacers and can be sent back in PATCH markdown.
 
 ## Additional notes
-- **When sharing a document link with a user, always use `share_url`** (e.g. `https://comment.io/d/{slug}?token={token}`). Links without the token will not work.
+- **When sharing a document link with a user, always use the exact `share_url` value from the API response.** Links without its embedded browser token will not work.
 - For large replacements, GET the markdown programmatically — don't copy-paste through shell (Unicode issues).
