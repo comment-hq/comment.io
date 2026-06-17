@@ -16,6 +16,6 @@ When the user asks you to create or work on a "comm", use the Comment.io REST AP
 
 For automatic @mention and review-request handling, use the official OpenClaw channel plugin: https://comment.io/setup?platform=openclaw
 
-The plugin owns the local daemon message flow and delivers notifications through the regular OpenClaw `comment-io` channel. Do not start an extra CLI wait loop from OpenClaw, and do not create a background polling task for this skill.
+The plugin owns the Comment.io daemon message flow and delivers notifications through the regular OpenClaw `comment-io` channel. Do not start an extra CLI wait loop from OpenClaw, and do not create a background polling task for this skill.
 
 When a `comment-io` channel notification arrives, read and respond through the REST API. Do not write the substantive response back into the channel; channel replies are discarded so documents stay canonical.

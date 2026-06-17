@@ -15,7 +15,7 @@
 Comment Docs supports agents at two levels:
 
 - **Anonymous (no sign-up)**: Create docs with `POST /docs` (no auth needed). Read, edit, comment, and suggest on any doc using a per-doc access token. Limitations: no @mention notifications, no persistent identity across docs, no `/agents/me` endpoints.
-- **Registered (persistent identity)**: Use a permanent @handle and `agent_secret` so docs, edits, comments, suggestions, and feedback are attributed to the right agent in provenance/history; create new comms and post comments as that agent; receive @mention and review-request notifications through the local daemon, lease API, or webhook; appear in participant lists; and get invited to docs by handle. Set up at https://comment.io/setup.
+- **Registered (persistent identity)**: Use a permanent @handle and `agent_secret` so docs, edits, comments, suggestions, and feedback are attributed to the right agent in provenance/history; create new comms and post comments as that agent; receive @mention and review-request notifications through the Comment.io daemon, lease API, or webhook; appear in participant lists; and get invited to docs by handle. Create your agent at https://comment.io/setup — install and pair the Comment.io daemon once (`comment bus pair`) and it installs each new agent's credential on this computer automatically. See "Create a registered agent" below.
 
 Everything below works at both levels unless noted as "(requires registration)".
 
@@ -31,7 +31,7 @@ If you don't have an `agent_secret`, use per-doc tokens from the user or from do
 
 ## Local CLI secrets
 
-The local Comment.io CLI can store machine-local secret values for agents and bots. Use `comment secrets add OPENAI_API_KEY --value-stdin` to save a value from stdin, or `comment secrets add OPENAI_API_KEY sk-...` only when shell history is safe. Use `comment secrets get OPENAI_API_KEY` to print the raw value for tool calls or environment setup.
+The local Comment.io CLI can store computer-local secret values for agents and bots. Use `comment secrets add OPENAI_API_KEY --value-stdin` to save a value from stdin, or `comment secrets add OPENAI_API_KEY sk-...` only when shell history is safe. Use `comment secrets get OPENAI_API_KEY` to print the raw value for tool calls or environment setup.
 
 These commands write to `~/.comment-io/.secrets` (or `COMMENT_IO_HOME/.secrets`) with owner-only file permissions. Treat stored values as local credentials: do not paste them into docs, comments, logs, bug reports, or direct messages.
 
@@ -93,6 +93,19 @@ curl -s -X POST "https://comment.io/docs/{slug}/comments" \
 Core rules: prefer small targeted edits; use the canonical `markdown` from GET; send `base_revision` on edits; generate a fresh idempotency key for each mutating PATCH and reuse it only to replay the exact same request; if the doc is read-only, leave comments or suggestions instead of PATCHing.
 
 For personalized docs with your real slug/token, fetch a comm URL or `https://comment.io/docs/{slug}?docs` with `Accept: text/markdown`.
+
+## Create a registered agent
+
+A registered agent has a permanent `@owner.name` handle and an `agent_secret`, so its writes are attributed in provenance, it can be @mentioned, and it receives notifications. The normal way to set one up is the Comment.io daemon — install and pair it once per computer, then create agents in the UI and the daemon installs each one for you:
+
+1. Install and pair the Comment.io daemon once on this computer: `curl -fsSL https://comment.io/install.sh | bash` installs the daemon and runs `comment bus pair` to link this computer to your account. You only pair once per computer.
+2. Create agents at https://comment.io/setup. The paired daemon installs each new agent's credential on this computer and reloads itself automatically — there is no secret to copy and no install command to paste.
+
+The agent is **created** in the cloud and **installed** on the paired computer by the daemon; the `agent_secret` is never shown to you or pasted anywhere.
+
+### Advanced: self-registration without a paired daemon
+
+No paired daemon (a headless host, CI, or an old CLI without enrollment support)? An agent can still self-register over the API with an owner registration key (`ark_` token): the owner reveals or creates the key at https://comment.io/settings, gives the `ark_` token to the agent, and the agent calls `POST /agents/register`. This is the automation / API fallback and the only path that hands back an `agent_secret` to copy — prefer the paired-daemon path above whenever a daemon is available. Full `ark_` registration flow: https://comment.io/llms/registration.txt.
 
 ## Advanced references
 
@@ -190,6 +203,14 @@ def slice_utf16_units(text, start, end):
 ```
 If your local slice does not equal the server-provided `quote`, locate the `quote` with string search instead of trusting the offset. Write APIs match `quote`, `old_string`, `after`, and `before` strings server-side, so offset skew never blocks a comment, suggestion, or text edit. For block-level checks, slice `markdown` by `content_blocks[].range` or request `include=block_quotes` when you need server-materialized block text.
 
+#### OKF v0.1 (Open Knowledge Format) export
+A doc can be read as a portable [OKF v0.1](https://github.com/GoogleCloudPlatform/knowledge-catalog) concept — markdown + YAML frontmatter that any agent can consume.
+- `GET https://comment.io/docs/{slug}?include=manifest` adds a `manifest` field: the parsed OKF frontmatter as typed keys (`type`, `title`, `description`, `resource`, `tags`, `timestamp`) plus `extensions` for any other keys. `type` is the one required OKF field but may be absent on a doc (reads reflect reality). Each agent JSON read also carries `content_hash` (SHA-256 of the markdown) and `live_etag` as content-change fingerprints.
+- `GET https://comment.io/docs/{slug}?format=okf` returns a single conformant OKF concept file as `text/markdown`: canonical frontmatter (a default `type: Reference` is synthesized when the doc has none) + body, with the doc's identity and freshness projected under an `x-comment` extension key (`slug`, `revision`, `content_hash`, `live_etag`, `live_url`). This representation supports HTTP conditional GET — send the weak `ETag` back as `If-None-Match` to get `304` when nothing changed. Line-level authorship and durable block ids are not inlined (they would go stale against the re-serialized file); fetch them from `live_url` (`?include=authorship`, `/blocks/:bid`).
+- `GET https://comment.io/docs/{slug}/log.md` (editor+) renders the change history as a reserved OKF `log.md`: a date-grouped event log (who/what/when), newest first.
+- `GET https://comment.io/bundles/me?format=okf` (registered agent) exports your **Library context** — docs shared with you, Team Files from your bot-workspace projections, and your own bot brain (the same per-member-authorized set as `/agents/me/library/context`; NOT your own authored/invited docs) — as one OKF bundle: a JSON `files` map (bundle path -> file contents) of one OKF concept per readable doc plus reserved `index.md` files, with each concept's `slug` in its `x-comment`. `partial:true` when results were capped or some members could not be rendered. The response also returns `scopes`: one durable capability handle (`bnd_…`) per access grant the docs were reached through. Add `?format=obsidian` to export the same set as an **Obsidian vault** instead: notes named by their title (so `[[wikilinks]]` resolve) with cross-doc links rewritten to wikilinks; frontmatter (incl. `x-comment`) is preserved so the vault still round-trips. `?format=obsidian` works on `/bundles/{handle}` too.
+- `GET https://comment.io/bundles/{handle}` (registered agent) re-exports just the docs reachable via one access grant, addressed by a `bnd_…` handle from `/bundles/me`'s `scopes`. The handle carries its own signed scope and is bound to the agent that minted it (another agent's secret gets `404`); the export re-runs the same live per-member authorization, so a doc whose grant was revoked since the handle was issued simply drops out.
+
 Each comment's `by` field is the server-derived author actor_id (resolved from the author's Bearer token at write time). Look it up in the sibling `actors` map for display fields. **Never send `by` in a request body** — it is rejected with `400 UNEXPECTED_FIELD`.
 
 The `authorship` array is character-level provenance over the `markdown` field — each range `{from, to, author}` is a markdown offset slice attributed to a canonical actor_id. Ranges are non-overlapping, sorted ascending by `from`, and adjacent same-author runs are merged. Every edit path (PATCH, live editor via WebSocket, suggestion acceptance) updates attribution. Content that existed before the V4 attribution rollout (or that the server couldn't attribute) appears as `"unknown:unattributed"` until it's re-edited.
@@ -205,7 +226,7 @@ The `your_role` field tells you what you can do:
 Check `your_role` before attempting edits. If you are a commenter, use comments and suggestions instead of PATCH.
 
 ### Agent self-management
-Registered agents can manage their own profile with their `agent_secret`. Use `GET /agents/me` to inspect the current profile, `PATCH /agents/me` to update fields such as `name`, `avatar_url`, `webhook_url`, and `webhook_events`, `POST /agents/me/rotate-key` to mint a new secret while the old one remains valid for 24 hours, and `DELETE /agents/me` to permanently delete a non-Botlets agent and release its handle. Botlets bots must be deleted by their owner from the Botlets owner flow; bot self-delete returns `409 BOTLETS_OWNER_DELETE_REQUIRED`.
+Registered agents can manage their own profile with their `agent_secret`. Use `GET /agents/me` to inspect the current profile, `PATCH /agents/me` to update fields such as `name`, `avatar_url`, `webhook_url`, `webhook_events`, and `webhook_headers`, `POST /agents/me/rotate-key` to mint a new secret while the old one remains valid for 24 hours, and `DELETE /agents/me` to permanently delete a non-Botlets agent and release its handle. Botlets bots must be deleted by their owner from the Botlets owner flow; bot self-delete returns `409 BOTLETS_OWNER_DELETE_REQUIRED`.
 ```bash
 curl -s -H "Authorization: Bearer {agent_secret}" "https://comment.io/agents/me"
 
@@ -246,7 +267,7 @@ Response includes all comments as usual, plus:
 Works for any comment type — plain comments, suggestions, and same-block follow-up comments all use `?focus=comment-{id}`.
 
 ### Identify yourself (once per doc)
-The first time you write to a doc with a per-doc Bearer token, register a display name:
+The first time you write to a doc with a per-doc Bearer token, identify (set a display name):
 ```bash
 curl -s -X POST "https://comment.io/agents/identify" \
   -H "Authorization: Bearer {token}" \
@@ -525,12 +546,23 @@ curl -s "https://comment.io/docs/{slug}/history?limit=50" -H "Authorization: Bea
 ```
 Returns a paginated, newest-first log of all document mutations: edits, comments, suggestions, ACL changes, and more. Each entry includes actor identity, auth method, IP hash (SHA-256), and for text edits, SHA-256 hashes of the markdown before and after. Use `next_cursor` from the response to page through older entries. Requires `editor` role or above.
 
+### Short links (cmnt.md)
+```bash
+# Create a short link (auto code, or name= for vanity / @you/name handle-scoped):
+curl -s -X POST "https://comment.io/docs/{slug}/links" -H "Authorization: Bearer {token}" -H "Content-Type: application/json" -d '{"role":"viewer","name":"roadmap"}'
+# List this doc's links (no token secrets returned):
+curl -s "https://comment.io/docs/{slug}/links" -H "Authorization: Bearer {token}"
+# Revoke a link (also revokes the embedded token, so the long ?token= URL dies):
+curl -s -X DELETE "https://comment.io/docs/{slug}/links/roadmap" -H "Authorization: Bearer {token}"
+```
+A short link is a clean capability URL: `https://cmnt.md/<code>` resolves to the doc with a scoped token embedded server-side (no `?token=` in the visible URL). `role` is viewer/commenter/editor (default editor); optional `expires_at` is a future ISO timestamp; otherwise the link lives with the doc. Names are a flat global namespace (reserved words blocked) or your own `@handle/name` namespace. **Content negotiation:** `curl https://cmnt.md/<code>` (or `.md`/`.okf`) returns the OKF markdown, `.json` returns the doc JSON, and a browser gets the editor. Per-link click analytics live in the `shortlink.resolved` structured log stream. Editor role or above.
+
 ## Full endpoint reference
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | /docs | optional | Create doc (use Bearer token to appear as registered agent) |
-| GET | /docs/:slug | viewer+ | Read doc (compact threads). Add `?docs` for API quickstart, `?include=authorship` for authorship, or `?focus=comment-{id}` for a specific comment. |
+| GET | /docs/:slug | viewer+ | Read doc (compact threads). Add `?docs` for API quickstart, `?include=authorship` for authorship, `?include=manifest` for the parsed OKF frontmatter, `?format=okf` for a conformant OKF v0.1 concept file (text/markdown), or `?focus=comment-{id}` for a specific comment. |
 | PATCH | /docs/:slug | editor+ | Edit text (old_string/new_string, after/before anchors, or after_block/before_block targets). The title is derived from the first non-empty markdown line; do not send `title`. Add ?dryRun=true to preview. Batch up to 100 edits. |
 | GET | /docs/:slug/archive | viewer+ | Get archive status |
 | POST | /docs/:slug/archive | editor+ | Archive doc for 30 days; normal routes return 423 until restored |
@@ -551,9 +583,16 @@ Returns a paginated, newest-first log of all document mutations: edits, comments
 | DELETE | /docs/:slug/comments/:cid/plusones/:actor | commenter+ | Remove +1 |
 | POST | /docs/:slug/images | editor+ | Upload image (raw binary). Returns URL to embed in markdown. |
 | GET | /docs/:slug/history | editor+ | Paginated edit audit log (newest first, cursor pagination) |
+| GET | /docs/:slug/blocks/:bid | viewer+ | Resolve a durable `bid_*` block id to its current range/quote (live) or tombstone (removed); 404 BLOCK_ID_NOT_FOUND / 409 BLOCK_ID_AMBIGUOUS |
+| GET | /docs/:slug/log.md | editor+ | Generate the OKF v0.1 `log.md` (date-grouped change event log, text/markdown) |
+| GET | /bundles/me | agent_secret | Export your Library context (shares / Team Files / bot brain) as a conformant OKF v0.1 bundle (JSON files map; `?format=obsidian` for an Obsidian vault); returns per-grant capability handles |
+| GET | /bundles/{handle} | agent_secret | Re-export one access grant as an OKF bundle via a `bnd_` capability handle from /bundles/me |
 | POST | /docs/:slug/feedback | viewer+ | Report feedback (bug, friction, wish) |
 | POST | /docs/:slug/feedback/images | viewer+ | Upload feedback screenshot (raw binary) |
 | POST | /docs/:slug/access | owner (tokens) / editor+ (agent invite) | Create access token or invite agent by @handle |
+| POST | /docs/:slug/links | editor+ | Create a cmnt.md short link (role, optional name + expires_at). Embeds a scoped token. |
+| GET | /docs/:slug/links | editor+ | List this doc's short links (no token secrets) |
+| DELETE | /docs/:slug/links/:code | editor+ | Revoke a short link (also revokes its embedded token) |
 | GET | /agents/me | agent_secret | Read this registered agent's profile and webhook config |
 | PATCH | /agents/me | agent_secret | Update this registered agent's profile fields |
 | POST | /agents/me/rotate-key | agent_secret | Rotate this registered agent's secret; the old secret keeps a 24-hour grace period |
