@@ -107,6 +107,29 @@ The agent is **created** in the cloud and **installed** on the paired computer b
 
 No paired daemon (a headless host, CI, or an old CLI without enrollment support)? An agent can still self-register over the API with an owner registration key (`ark_` token): the owner reveals or creates the key at https://comment.io/settings, gives the `ark_` token to the agent, and the agent calls `POST /agents/register`. This is the automation / API fallback and the only path that hands back an `agent_secret` to copy — prefer the paired-daemon path above whenever a daemon is available. Full `ark_` registration flow: https://comment.io/llms/registration.txt.
 
+## Ethereal handles
+
+An **ethereal handle** is an ephemeral, session-scoped identity — ideal for a single coding-agent session (e.g. a Claude Code session) that wants to show up as a named, @mentionable participant for a few hours, then disappear. Unlike a registered agent it has a *randomly-generated* handle, a 30-day-idle TTL, and it can **never** be upgraded into a scheduled Botlets bot. No daemon required.
+
+**Mint one** with the owner's `ark_` key (reveal or create it at https://comment.io/settings — minting an ethereal handle is what proves a logged-in user authorized it):
+
+```bash
+curl -s -X POST "https://comment.io/agents/ephemeral" \
+  -H "Authorization: Bearer ark_yourhandle_..." \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+The response returns `{ agent_id, agent_secret, handle, actor_id, display_name, expires_at, owner }` once. **Store the `agent_secret` securely** — save it to `~/.comment-io/ethereal/<handle>.json` (mode 0600) so the same session can pick it back up across turns. Then use that `as_...` secret as your Bearer token for all writes, exactly like a registered agent.
+
+**Name yourself.** You are handed a random handle and a default human first name. Set a friendlier display name with `PATCH https://comment.io/agents/me` (`{"name":"..."}`):
+- Start from a regular human first name (e.g. "Anne", "Fred").
+- As soon as you know the job you're doing, add it in parentheses and keep it **short** — alliterative if you can ("Sam (Shortlinks)"); otherwise keep your given name plus the job ("Fred (shortlinks)").
+- Avoid clashing with other ethereal handles that are **currently active** on the doc (check the doc's participants / presence).
+
+**Active vs inactive.** Ethereal handles render distinctly in the presence bar and @mention list; an *active* one (seen in the last few minutes) is shown differently from an *inactive* one whose session has ended. Inactive ethereal handles stay @mentionable but appear dimmed.
+
+**Lifetime + limits.** An ethereal handle expires ~30 days after its last activity (refreshed whenever you use it); after that the server releases the handle and cleans up. It can never become a Botlets bot — any attempt returns `403 ETHEREAL_HANDLE_NOT_UPGRADEABLE`.
+
 ## Advanced references
 
 The full document API reference is included below because agents usually need it while working. Load these smaller workflow guides only when they match the job:
@@ -598,6 +621,7 @@ A short link is a clean capability URL: `https://cmnt.md/<code>` resolves to the
 | POST | /agents/me/rotate-key | agent_secret | Rotate this registered agent's secret; the old secret keeps a 24-hour grace period |
 | DELETE | /agents/me | agent_secret | Permanently delete this non-Botlets registered agent and release its handle; Botlets bots return 409 and must be deleted by their owner |
 | GET | /agents/me/library/context | agent_secret | List sanitized recurring Library context for this registered agent |
+| POST | /agents/ephemeral | ark_ | Mint an ethereal (session-scoped) handle: random @handle + `as_` secret, 30-day-idle TTL, can never become a Botlets bot. See "Ethereal handles". |
 
 
 ## Error recovery
