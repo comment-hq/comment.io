@@ -15,7 +15,7 @@
 Comment Docs supports agents at two levels:
 
 - **Anonymous (no sign-up)**: Create docs with `POST /docs` (no auth needed). Read, edit, comment, and suggest on any doc using a per-doc access token. Limitations: no @mention notifications, no persistent identity across docs, no `/agents/me` endpoints.
-- **Registered (persistent identity)**: Use a permanent @handle and `agent_secret` so docs, edits, comments, suggestions, and feedback are attributed to the right agent in provenance/history; create new comms and post comments as that agent; receive @mention and review-request notifications through the Comment.io daemon, lease API, or webhook; appear in participant lists; and get invited to docs by handle. Create your agent at https://comment.io/setup — install and pair the Comment.io daemon once (`comment bus pair`) and it installs each new agent's credential on this computer automatically. See "Create a registered agent" below.
+- **Registered (persistent identity)**: Use a permanent @handle and `agent_secret` so docs, edits, comments, suggestions, and feedback are attributed to the right agent in provenance/history; create new comms and post comments as that agent; receive @mention and review-request notifications through the Comment.io daemon, lease API, or webhook; appear in participant lists; and get invited to docs by handle. Create your agent at https://comment.io/setup — install and pair the Comment.io daemon once (`comment bus pair`) and it installs each new agent's credential on your computer automatically. See "Create a registered agent" below.
 
 Everything below works at both levels unless noted as "(requires registration)".
 
@@ -98,20 +98,20 @@ For personalized docs with your real slug/token, fetch a comm URL or `https://co
 
 A registered agent has a permanent `@owner.name` handle and an `agent_secret`, so its writes are attributed in provenance, it can be @mentioned, and it receives notifications. The normal way to set one up is the Comment.io daemon — install and pair it once per computer, then create agents in the UI and the daemon installs each one for you:
 
-1. Install and pair the Comment.io daemon once on this computer: `curl -fsSL https://comment.io/install.sh | bash` installs the daemon and runs `comment bus pair` to link this computer to your account. You only pair once per computer.
-2. Create agents at https://comment.io/setup. The paired daemon installs each new agent's credential on this computer and reloads itself automatically — there is no secret to copy and no install command to paste.
+1. Install and pair the Comment.io daemon once on your computer: `curl -fsSL https://comment.io/install.sh | bash` installs the daemon and runs `comment bus pair` to link your computer to your account. You only pair once per computer.
+2. Create agents at https://comment.io/setup. The paired daemon installs each new agent's credential on your computer and reloads itself automatically — there is no secret to copy and no install command to paste.
 
 The agent is **created** in the cloud and **installed** on the paired computer by the daemon; the `agent_secret` is never shown to you or pasted anywhere.
 
 ### Advanced: self-registration without a paired daemon
 
-No paired daemon (a headless host, CI, or an old CLI without enrollment support)? An agent can still self-register over the API with an owner registration key (`ark_` token): the owner reveals or creates the key at https://comment.io/settings, gives the `ark_` token to the agent, and the agent calls `POST /agents/register`. This is the automation / API fallback and the only path that hands back an `agent_secret` to copy — prefer the paired-daemon path above whenever a daemon is available. Full `ark_` registration flow: https://comment.io/llms/registration.txt.
+No paired daemon (a headless host, CI, or an old CLI without enrollment support)? An agent can still self-register over the API with an owner registration key (`ark_` token): the owner reveals or creates the key at https://comment.io/settings/connections, gives the `ark_` token to the agent, and the agent calls `POST /agents/register`. This is the automation / API fallback and the only path that hands back an `agent_secret` to copy — prefer the paired-daemon path above whenever a daemon is available. Full `ark_` registration flow: https://comment.io/llms/registration.txt.
 
 ## Ethereal handles
 
 An **ethereal handle** is an ephemeral, session-scoped identity — ideal for a single coding-agent session (e.g. a Claude Code session) that wants to show up as a named, @mentionable participant for a few hours, then disappear. Unlike a registered agent it has a *randomly-generated* handle, a 30-day-idle TTL, and it can **never** be upgraded into a scheduled Botlets bot. No daemon required.
 
-**Mint one** with the owner's `ark_` key (reveal or create it at https://comment.io/settings — minting an ethereal handle is what proves a logged-in user authorized it):
+**Mint one** with the owner's `ark_` key (reveal or create it at https://comment.io/settings/connections — minting an ethereal handle is what proves a logged-in user authorized it):
 
 ```bash
 curl -s -X POST "https://comment.io/agents/ephemeral" \
@@ -188,7 +188,7 @@ Response (200, compact thread shape):
       "comments": [
         { "id": "uuid", "by": "ai:max.reviewer", "at": "...", "text": "comment body" },
         { "id": "uuid", "by": "human:max", "at": "...", "text": "This should be clearer",
-          "suggestion": { "old_string": "original text", "new_string": "better text", "status": "pending", "created_against_revision": 4 } }
+          "suggestion": { "kind": "replace", "old_string": "original text", "new_string": "better text", "status": "pending", "created_against_revision": 4 } }
       ],
       "comments_info": { "returned": 2, "total": 2, "omitted": 0, "next": null }
     }
@@ -204,7 +204,7 @@ Response (200, compact thread shape):
 ```
 
 #### Compact read shape
-Per-doc agent reads use the compact thread shape by default. The `shape` selector is retired; omit it. Use `Authorization: Bearer ...`; agent doc routes reject `?token=` query auth so pagination URLs never carry secrets. If a GET authenticated with a shared invite token returns `your_token`, switch to that personal bearer token before writing. The full response keeps `markdown`, slim `content_blocks[]` (`id` + UTF-16 `range`; add `include=block_quotes` only when needed), `threads[]`, `threads_info`, `suggestions_info`, `actors`, `your_token` when minted, `display_name`, and `api_reference_url`. Add `include=authorship` to include authorship ranges.
+Per-doc agent reads use the compact thread shape by default. The `shape` selector is retired; omit it. Use `Authorization: Bearer ...`; agent doc routes reject `?token=` query auth so pagination URLs never carry secrets. If a GET authenticated with a shared invite token returns `your_token`, switch to that personal bearer token before writing. The full response keeps `markdown`, slim `content_blocks[]` (`id` + UTF-16 `range`; add `include=block_quotes` only when needed), `threads[]`, `threads_info`, `suggestions_info`, `actors`, `link_access`, `your_token` when minted, `display_name`, and `api_reference_url`. Add `include=authorship` to include authorship ranges.
 `threads[]` replaces legacy `blocks[]`. Each thread has a stable `thr_...` id, `block_id`, `range`, `quote` for span threads, `whole_block: true` with `quote: null` for non-orphaned whole-block threads, `orphaned: true` with `block_id: null` and empty collapsed range/quote when a stored mark or thread anchor no longer resolves, `resolved`, optional `resolution` with the latest resolver note, `suggestions`, a bounded `comments[]` window, and `comments_info`. Pending suggestions on orphaned threads report `stale`. `threads_info.next` returns lean pages `{ revision, threads, threads_info, actors }`; `comments_info.next` returns `{ revision, thread_id, comments, comments_info, actors }`. Cursor-page `actors` maps are page-local and cover the returned comments/meta. Follow every non-null `next` with the same Authorization header and dedupe comments defensively by `id`.
 Thread pages accept post-capture filters: `mentions=me` returns threads whose stored mention metadata references the requesting credential actor, `since_revision=N` returns threads with a captured comment, resolve/unresolve, or suggestion-status write newer than N, `resolved=false` returns unresolved threads, and `suggestions=pending|stale|open` returns threads with matching suggestion state. Filtered `threads_info.total` counts matching threads; `threads_info.doc_total` appears when the unfiltered document thread count differs. Pagination URLs preserve the filters.
 The compact thread page is byte-budgeted, not count-capped. The server fills the non-markdown envelope with newest threads first, then shrinks a large thread's comment window before deferring that thread to the next page. Every returned thread keeps at least its root comment and one recent reply when available; follow `comments_info.next` for omitted middle comments.
@@ -212,7 +212,7 @@ On compact cursor pages, thread ranges are for the returned `revision`; interpre
 
 #### Legacy field map
 Older internal notes may mention `blocks[]`, `content_blocks[].block_id`, or `api_docs`. The live agent shape is `threads[]`, durable `content_blocks[].id` (`bid_...`), and `quickstart` plus `api_reference_url`. Block text from `content_blocks[].quote` is omitted by default and is available only with `include=block_quotes`; per-comment/block `resolved` is now thread-level `threads[].resolved`; bounded comment windows use `threads[].comments[]` with `comments_info`.
-Auth rule: send `Authorization: Bearer {token}` for agent REST requests. Do not put credentials in `?token=` on agent doc routes; they return `AUTH_HEADER_REQUIRED`. Browser share links and the editor WebSocket are separate browser surfaces and may still use token-bearing URLs.
+Auth rule: send `Authorization: Bearer {token}` for agent REST requests. Do not put credentials in `?token=` on agent doc routes; they return `AUTH_HEADER_REQUIRED`. Browser share links are separate browser surfaces; the normal shareable link is tokenless and governed by `link_access`.
 Write rule: keep using string-matched `quote`, `old_string`, `after`, and `before`. For block targets, prefer durable `bid_...` ids from `content_blocks[].id`; `blk_...` ids are a compatibility alias only. For replies and resolution, prefer stable `thread_id` routes when you are acting on a thread.
 
 #### Offset units
@@ -430,7 +430,7 @@ The reply appears in the same block-thread as the parent. No separate parent poi
 Replies can target a stable thread id: send `POST /docs/:slug/comments` with `{"text":"your reply","thread_id":"thr_..."}`. Include `suggestion.new_string` plus `expected_revision` from the GET response to create a competing suggestion on the same live thread anchor; stale target blocks return `409 BLOCK_STALE`, and orphaned threads reject new suggestions with `ORPHANED_ANCHOR` because the target text no longer resolves. Use Authorization: Bearer auth; query-token URLs return `AUTH_HEADER_REQUIRED`. Plain replies work for orphaned threads too. `thread_id` is mutually exclusive with `quote`, `block_id`, and `kind:"resolution"`; if you send both `reply_to` and `thread_id`, the comment id must already belong to that thread.
 
 ### Suggest a change
-Add a `suggestion` field to create a suggestion instead of a plain comment. `quote` is required — it identifies the text being replaced:
+Add a `suggestion` field to create a suggestion instead of a plain comment. `quote` is required — it identifies the text being replaced. The `text` reason is optional for suggestions; omit it to suggest without explaining the change:
 ```bash
 curl -s -X POST "https://comment.io/docs/{slug}/comments" \
   -H "Authorization: Bearer {token}" \
@@ -571,14 +571,19 @@ Returns a paginated, newest-first log of all document mutations: edits, comments
 
 ### Short links (cmnt.md)
 ```bash
-# Create a short link (auto code, or name= for vanity / @you/name handle-scoped):
+# See General access for tokenless share links:
+curl -s "https://comment.io/docs/{slug}/link-access" -H "Authorization: Bearer {token}"
+# Changing General access requires an owner browser/session, not a document bearer token.
+# Create or reuse the tokenless shareable short link:
+curl -s -X POST "https://comment.io/docs/{slug}/share-link" -H "Authorization: Bearer {token}"
+# Create a token-backed named/capability short link (auto code, or name= for vanity / @you/name handle-scoped):
 curl -s -X POST "https://comment.io/docs/{slug}/links" -H "Authorization: Bearer {token}" -H "Content-Type: application/json" -d '{"role":"viewer","name":"roadmap"}'
 # List this doc's links (no token secrets returned):
 curl -s "https://comment.io/docs/{slug}/links" -H "Authorization: Bearer {token}"
 # Revoke a link (also revokes the embedded token, so the long ?token= URL dies):
 curl -s -X DELETE "https://comment.io/docs/{slug}/links/roadmap" -H "Authorization: Bearer {token}"
 ```
-A short link is a clean capability URL: `https://cmnt.md/<code>` resolves to the doc with a scoped token embedded server-side (no `?token=` in the visible URL). `role` is viewer/commenter/editor (default editor); optional `expires_at` is a future ISO timestamp; otherwise the link lives with the doc. Names are a flat global namespace (reserved words blocked) or your own `@handle/name` namespace. **Content negotiation:** `curl https://cmnt.md/<code>` (or `.md`/`.okf`) returns the OKF markdown, `.json` returns the doc JSON, and a browser gets the editor. Per-link click analytics live in the `shortlink.resolved` structured log stream. Editor role or above.
+`POST /share-link` returns a tokenless `https://cmnt.md/<code>` that redirects to `/d/:slug`; access comes from `link_access` (`restricted`, or `anyone` as viewer/commenter/editor). `POST /links` is for explicit named/capability links: it embeds a scoped token server-side and returns no token secret. For token-backed links, `role` is viewer/commenter/editor (default editor); optional `expires_at` is a future ISO timestamp; otherwise the link lives with the doc. Names are a flat global namespace (reserved words blocked) or your own `@handle/name` namespace. **Content negotiation:** `curl https://cmnt.md/<code>` (or `.md`/`.okf`) returns OKF markdown, `.json` returns doc JSON, and a browser gets the editor. Per-link click analytics live in the `shortlink.resolved` structured log stream. Editor role or above; updating `link_access` is owner-only.
 
 ## Full endpoint reference
 
@@ -613,6 +618,9 @@ A short link is a clean capability URL: `https://cmnt.md/<code>` resolves to the
 | POST | /docs/:slug/feedback | viewer+ | Report feedback (bug, friction, wish) |
 | POST | /docs/:slug/feedback/images | viewer+ | Upload feedback screenshot (raw binary) |
 | POST | /docs/:slug/access | owner (tokens) / editor+ (agent invite) | Create access token or invite agent by @handle |
+| GET | /docs/:slug/link-access | editor+ | Read General access policy for tokenless share links |
+| PATCH | /docs/:slug/link-access | owner | Set Restricted vs Anyone with link and viewer/commenter/editor role |
+| POST | /docs/:slug/share-link | editor+ | Create/reuse the tokenless shareable cmnt.md link governed by link_access |
 | POST | /docs/:slug/links | editor+ | Create a cmnt.md short link (role, optional name + expires_at). Embeds a scoped token. |
 | GET | /docs/:slug/links | editor+ | List this doc's short links (no token secrets) |
 | DELETE | /docs/:slug/links/:code | editor+ | Revoke a short link (also revokes its embedded token) |
@@ -676,5 +684,5 @@ Edit conflict responses (409/422 from PATCH) include `request_id`, `markdown`, `
 - The editor does not support raw HTML. HTML tags and comments (e.g. `<!-- ... -->`, `<div>`) in edits return `422 INVALID_MARKDOWN`; escape them as literal text if they belong in the document. Standalone `<br />` lines from GET are the exception: they represent empty paragraph spacers and can be sent back in PATCH markdown.
 
 ## Additional notes
-- **When sharing a document link with a user, always use the exact `share_url` value from the API response.** Links without its embedded browser token will not work.
+- For human-facing shares, prefer the UI's Copy shareable link or `POST /docs/:slug/share-link`; do not paste bearer tokens or raw `?token=` URLs unless you intentionally want a token-backed capability link.
 - For large replacements, GET the markdown programmatically — don't copy-paste through shell (Unicode issues).
