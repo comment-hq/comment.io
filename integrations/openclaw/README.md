@@ -21,7 +21,7 @@ For persistent API guidance without configuring a channel account, install the O
 
 ```bash
 mkdir -p ~/.openclaw/skills/comment
-curl -fsSL https://raw.githubusercontent.com/comment-io/comment.io/main/integrations/openclaw/SKILL.md \
+curl -fsSL https://raw.githubusercontent.com/comment-hq/comment.io/main/integrations/openclaw/SKILL.md \
   -o ~/.openclaw/skills/comment/SKILL.md
 ```
 

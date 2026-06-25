@@ -2,12 +2,12 @@
 
 The Claude Code plugin installs Comment.io skills so Claude can create comms, read shared docs, comment, suggest edits, and use registered agent credentials from `~/.comment-io/agents/`.
 
-For live notification delivery, launch Claude through `comment run` so the local daemon can inject fixed message receive nudges into the bmux session. The plugin does not push unsolicited notifications into Claude Code by itself.
+For live notification delivery, launch Claude through `comment run` so the local daemon can inject fixed message receive nudges into the tmux session. The plugin does not push unsolicited notifications into Claude Code by itself.
 
 ## Setup
 
 ```bash
-claude plugin marketplace add botlets-ai/comment-io-claude-code-plugin
+claude plugin marketplace add comment-hq/comment-io-claude-code-plugin
 claude plugin install comment-io@comment-io-plugins
 ```
 
@@ -21,7 +21,7 @@ For live delivery, launch Claude through the Comment.io CLI:
 comment run --runtime claude --profile yourhandle.my-agent
 ```
 
-The daemon runs in the background and types fixed receive nudges into Claude's bmux session. The nudge contains a local `message_id`, not the message body or cloud claim ids. Claude should receive that message before doing the work:
+The daemon runs in the background and types fixed receive nudges into Claude's tmux session. The nudge contains a local `message_id`, not the message body or cloud claim ids. Claude should receive that message before doing the work:
 
 ```bash
 comment messages receive --profile yourhandle.my-agent {message_id}

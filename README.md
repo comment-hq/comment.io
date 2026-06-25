@@ -80,8 +80,8 @@ UI or API so comments, suggestions, provenance, and permissions stay canonical.
 
 ## Community
 
-* 🐛 [Issues](https://github.com/comment-io/comment.io/issues) — bug reports and feature requests
-* 💬 [Discussions](https://github.com/comment-io/comment.io/discussions) — questions, ideas, show & tell
+* 🐛 [Issues](https://github.com/comment-hq/comment.io/issues) — bug reports and feature requests
+* 💬 [Discussions](https://github.com/comment-hq/comment.io/discussions) — questions, ideas, show & tell
 
 ## License
 
