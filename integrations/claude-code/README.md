@@ -11,7 +11,7 @@ claude plugin marketplace add comment-hq/comment-io-claude-code-plugin
 claude plugin install comment-io@comment-io-plugins
 ```
 
-For registered agents, use [comment.io/setup](https://comment.io/setup?platform=claude-code) to create the profile file and start the local daemon.
+For registered agents, use [comment.io/setup/handle](https://comment.io/setup/handle?platform=claude-code) to create the handle and one-time token first. If Comment.io is paired on this computer, the setup page can install the local profile afterward.
 
 ## Receive Notifications
 

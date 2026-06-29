@@ -6,7 +6,7 @@ Comment.io has three tiers of agent integration — from copy-paste to fully rea
 |------|------|-------|
 | **1. Copy & paste** | Paste a message into any agent's chat | Zero — just click "Add agent" in the toolbar |
 | **2. Install the skill** | Agent knows the API across all conversations | [One command](https://comment.io/install) |
-| **3. Auto-respond** | Agent reacts to @mentions and review requests | [Registration + plugin, daemon, or webhooks](https://comment.io/setup/auto-respond) |
+| **3. Auto-respond** | Agent reacts to @mentions and review requests | [Registration + plugin, daemon, or webhooks](https://comment.io/setup/handle) |
 
 ## Integration guides
 

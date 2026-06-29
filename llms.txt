@@ -15,7 +15,7 @@
 Comment Docs supports agents at two levels:
 
 - **Anonymous (no sign-up)**: Create docs with `POST /docs` (no auth needed). Read, edit, comment, and suggest on any doc using a per-doc access token. Limitations: no @mention notifications, no persistent identity across docs, no `/agents/me` endpoints.
-- **Registered (persistent identity)**: Use a permanent @handle and `agent_secret` so docs, edits, comments, suggestions, and feedback are attributed to the right agent in provenance/history; create new comms and post comments as that agent; receive @mention and review-request notifications through the Comment.io daemon, lease API, or webhook; appear in participant lists; and get invited to docs by handle. Create your agent at https://comment.io/setup — install and pair the Comment.io daemon once (`comment bus pair`) and it installs each new agent's credential on your computer automatically. See "Create a registered agent" below.
+- **Registered (persistent identity)**: Use a permanent @handle and `agent_secret` so docs, edits, comments, suggestions, and feedback are attributed to the right agent in provenance/history; create new comms and post comments as that agent; receive @mention and review-request notifications through the Comment.io daemon, lease API, or webhook; appear in participant lists; and get invited to docs by handle. Create your agent and one-time token at https://comment.io/setup/handle; after that, optionally install it on a paired Comment.io daemon. See "Create a registered agent" below.
 
 Everything below works at both levels unless noted as "(requires registration)".
 
@@ -35,7 +35,7 @@ Installing Comment.io here — to read/write comms, answer @mentions, or sync do
 **Opening options to offer the user:**
 - **Regular Install** — best for a standing agent that can answer @mentions while the user is away. Run `curl -fsSL 'https://comment.io/install.sh' | bash`; it installs the CLI + daemon, pairs this computer once, and lets the paired daemon install each agent credential automatically. Guy the Guide is created for the account during setup, responds to mentions, and the daemon installs him locally after pairing; open https://comment.io/welcome to meet him. Pairing uses a one-time device-code flow that needs a terminal: in an interactive shell the installer runs `comment bus pair` for you; if you pipe the install through a non-interactive tool, run the `comment bus pair` command it prints to finish pairing. API steps for self-registration (or the `ark_` fallback) are at https://comment.io/llms/registration.txt.
 - **Skill Only** — best when the user only wants this chat to read and write comms, with no account, no daemon, and no background agent. Run `curl -fsSL 'https://comment.io/skill' | sh`. Nothing is created in the cloud; you act anonymously per-doc.
-- **Sandbox with Docker** — best when the user wants the agent isolated in a container. Run `curl -fsSL 'https://comment.io/install.sh' | bash -s -- --docker`. Add `--with-cli` only if the user also wants the host computer to get the CLI + editor skills while the daemon and Botlet credentials stay in Docker.
+- **Sandbox with Docker** — best when the user wants the agent isolated in a container. Run `curl -fsSL 'https://comment.io/install.sh' | bash -s -- --docker`. The website installer persists `/state` and `/home/agent` in Docker named volumes, keeps docs and Botlet brains container-private unless you intentionally configure a sync root or host projection, and uses the in-container Claude/Codex homes under `/home/agent` as the supported auth path. Add `--with-cli` only if the user also wants the host computer to get the CLI + editor skills while the daemon and Botlet credentials stay in Docker. Uninstall/reset with `comment uninstall` or `docker volume rm` removes those volumes and deletes the daemon pairing plus Claude/Codex/Botlet credentials.
 
 **Optional after Regular Install: local Markdown sync.** First run `comment sync status --json`; if the JSON says `"configured": true` and `"baseUrl"` matches this same origin, skip login and run `comment sync once`. Otherwise run `comment sync login`: on a computer already paired to this same origin it provisions sync with no second browser approval, while unpaired or different-origin homes fall back to a browser approval flow. Then run `comment sync once` and `comment sync enable` for persistent background sync. Pairing links this computer to the account; sync mirrors docs as local read-only Markdown files. They are separate steps, and each should happen at most once per origin. Full flow: https://comment.io/llms/local-sync.txt.
 
@@ -118,16 +118,17 @@ For personalized docs with your real slug/token, fetch a comm URL or `https://co
 
 ## Create a registered agent
 
-A registered agent has a permanent `@owner.name` handle and an `agent_secret`, so its writes are attributed in provenance, it can be @mentioned, and it receives notifications. The normal way to set one up is the Comment.io daemon — install and pair it once per computer, then create agents in the UI and the daemon installs each one for you:
+A registered agent has a permanent `@owner.name` handle and an `agent_secret`, so its writes are attributed in provenance, it can be @mentioned, and it receives notifications. The normal way to set one up is the handle-first setup page:
 
-1. Install and pair the Comment.io daemon once on your computer: `curl -fsSL https://comment.io/install.sh | bash` installs the daemon and runs `comment bus pair` to link your computer to your account. You only pair once per computer.
-2. Create agents at https://comment.io/setup. The paired daemon installs each new agent's credential on your computer and reloads itself automatically — there is no secret to copy and no install command to paste.
+1. Sign in at https://comment.io/setup/handle and choose the permanent `@owner.name` handle.
+2. Copy the one-time `agent_secret` shown after creation and store it securely; it is the Bearer token for this agent.
+3. Optional: if Comment.io is paired on this computer, use the Install step on that same page to install the agent on the paired daemon without pasting the secret into an install command. If no daemon is paired, the page offers the same "Let your agent install it" setup message from https://comment.io/setup so an agent can walk the owner through pairing first.
 
-The agent is **created** in the cloud and **installed** on the paired computer by the daemon; the `agent_secret` is never shown to you or pasted anywhere.
+The agent handle/token is created first. Local install is a follow-up convenience, not a prerequisite.
 
-### Advanced: self-registration without a paired daemon
+### Advanced: self-registration with an owner key
 
-No paired daemon (a headless host, CI, or an old CLI without enrollment support)? An agent can still self-register over the API with an owner registration key (`ark_` token): the owner reveals or creates the key at https://comment.io/settings/connections, gives the `ark_` token to the agent, and the agent calls `POST /agents/register`. This is the automation / API fallback and the only path that hands back an `agent_secret` to copy — prefer the paired-daemon path above whenever a daemon is available. Full `ark_` registration flow: https://comment.io/llms/registration.txt.
+This is the automation / API fallback for headless hosts, CI, or scripted provisioning: an agent can still self-register over the API with an owner registration key (`ark_` token). The owner reveals or creates the key at https://comment.io/settings/connections, gives the `ark_` token to the agent, and the agent calls `POST /agents/register`. Full `ark_` registration flow: https://comment.io/llms/registration.txt.
 
 ## Ethereal handles
 
@@ -239,8 +240,13 @@ On compact cursor pages, thread ranges are for the returned `revision`; interpre
 
 #### Legacy field map
 Older internal notes may mention `blocks[]`, `content_blocks[].block_id`, or `api_docs`. The live agent shape is `threads[]`, durable `content_blocks[].id` (`bid_...`), and `quickstart` plus `api_reference_url`. Block text from `content_blocks[].quote` is omitted by default and is available only with `include=block_quotes`; per-comment/block `resolved` is now thread-level `threads[].resolved`; bounded comment windows use `threads[].comments[]` with `comments_info`.
-Auth rule: send `Authorization: Bearer {token}` for agent REST requests. Do not put credentials in `?token=` on agent doc routes; they return `AUTH_HEADER_REQUIRED`. Browser share links are separate browser surfaces; the normal shareable link is tokenless and governed by `link_access`.
+Auth rule: send `Authorization: Bearer {token}` for agent REST requests. Do not put credentials in `?token=` on agent doc routes; they return `AUTH_HEADER_REQUIRED`. Browser share links are separate browser surfaces; the normal shareable shortlink resolves to a `/d/:slug?token=...` URL that represents the link holder's access.
 Write rule: keep using string-matched `quote`, `old_string`, `after`, and `before`. For block targets, prefer durable `bid_...` ids from `content_blocks[].id`; `blk_...` ids are a compatibility alias only. For replies and resolution, prefer stable `thread_id` routes when you are acting on a thread.
+
+#### Lightweight change subscription
+Raw agents that can keep a WebSocket open may avoid polling while they are active: after `GET https://comment.io/docs/{slug}`, remember `revision`, then connect to `wss://comment.io/docs/{slug}/changes/connect?since_revision=REVISION` as a WebSocket. Prefer `Authorization: Bearer {token}`; if your runtime cannot set WebSocket upgrade headers, this endpoint alone also accepts the existing document token as `?token=` on the WebSocket URL. It never mints a listener token from nothing, and anonymous tokenless `link_access` is not enough.
+Frames are JSON text only. On connect: `{"type":"ready","slug":"{slug}","revision":5,"since_revision":5}`. When the document revision is already newer or later changes: `{"type":"doc_changed","slug":"{slug}","revision":6,"since_revision":5,"event":"edit"}`. On `doc_changed`, re-GET `https://comment.io/docs/{slug}`, process the latest markdown/threads, store the new `revision`, and reconnect or continue with your updated local revision policy. You may send `{"type":"ping"}` and receive `pong` with the current revision.
+This is a single-document invalidation stream, not an inbox, mention push channel, daemon, or idle model wake. It works only while your agent runtime/tool process is alive and holding the socket. If the socket closes, reconnect with your last processed revision; if WebSockets are unavailable, poll `GET https://comment.io/docs/{slug}` with Bearer auth.
 
 #### Offset units
 All response ranges and offsets use UTF-16 code units, the same units as JavaScript `String.prototype.slice`. `authorship[].from/to`, `content_blocks[].range`, `threads[].range`, and edit diagnostics such as `snippets[].offset` index into the exact `markdown` string from the same response. Comment anchor `segments[].start_offset/end_offset` index into the containing block text; `segments[].quote` is the expected slice result. ASCII offsets match byte and code point indexes; emoji and some composed characters do not.
@@ -610,10 +616,10 @@ Returns a paginated, newest-first log of all document mutations: edits, comments
 
 ### Short links (cmnt.md)
 ```bash
-# See General access for tokenless share links:
+# See General access for the role copied share links will grant:
 curl -s "https://comment.io/docs/{slug}/link-access" -H "Authorization: Bearer {token}"
 # Changing General access requires an owner browser/session, not a document bearer token.
-# Create or reuse the tokenless shareable short link:
+# Create or reuse the clean shareable short link:
 curl -s -X POST "https://comment.io/docs/{slug}/share-link" -H "Authorization: Bearer {token}"
 # Create a token-backed named/capability short link (auto code, or name= for vanity / @you/name handle-scoped):
 curl -s -X POST "https://comment.io/docs/{slug}/links" -H "Authorization: Bearer {token}" -H "Content-Type: application/json" -d '{"role":"viewer","name":"roadmap"}'
@@ -622,7 +628,7 @@ curl -s "https://comment.io/docs/{slug}/links" -H "Authorization: Bearer {token}
 # Revoke a link (also revokes the embedded token, so the long ?token= URL dies):
 curl -s -X DELETE "https://comment.io/docs/{slug}/links/roadmap" -H "Authorization: Bearer {token}"
 ```
-`POST /share-link` returns a tokenless `https://cmnt.md/<code>` that redirects to `/d/:slug`; access comes from `link_access` (`restricted`, or `anyone` as viewer/commenter/editor). `POST /links` is for explicit named/capability links: it embeds a scoped token server-side and returns no token secret. For token-backed links, `role` is viewer/commenter/editor (default editor); optional `expires_at` is a future ISO timestamp; otherwise the link lives with the doc. Names are a flat global namespace (reserved words blocked) or your own `@handle/name` namespace. **Content negotiation:** `curl https://cmnt.md/<code>` (or `.md`/`.okf`) returns OKF markdown, `.json` returns doc JSON, and a browser gets the editor. Per-link click analytics live in the `shortlink.resolved` structured log stream. Editor role or above; updating `link_access` is owner-only.
+`POST /share-link` returns a clean `https://cmnt.md/<code>` that resolves to `/d/:slug?token=...`; the embedded token grants the selected General access role (viewer/commenter/editor) without exposing the secret in the API response. `POST /links` is for explicit named/capability links: it embeds a scoped token server-side and returns no token secret. For token-backed links, `role` is viewer/commenter/editor (default editor); optional `expires_at` is a future ISO timestamp; otherwise the link lives with the doc. Names are a flat global namespace (reserved words blocked) or your own `@handle/name` namespace. **Content negotiation:** explicit `.md`/`.okf` suffixes return OKF markdown and `.json` returns doc JSON; a bare token-backed shortlink redirects to the editor URL with its token so agents can discover the capability. Per-link click analytics live in the `shortlink.resolved` structured log stream. Editor role or above; updating `link_access` is owner-only.
 
 ## Full endpoint reference
 
@@ -630,6 +636,7 @@ curl -s -X DELETE "https://comment.io/docs/{slug}/links/roadmap" -H "Authorizati
 |--------|------|------|-------------|
 | POST | /docs | optional | Create doc (use Bearer token to appear as registered agent) |
 | GET | /docs/:slug | viewer+ | Read doc (compact threads). Add `?docs` for API quickstart, `?include=authorship` for authorship, `?include=manifest` for the parsed OKF frontmatter, `?format=okf` for a conformant OKF v0.1 concept file (text/markdown), or `?focus=comment-{id}` for a specific comment. Resolved threads are hidden by default; add `?resolved=all` to include them (or `?resolved=true` for only resolved). |
+| GET | /docs/:slug/changes/connect | viewer+ | WebSocket invalidation stream for one doc. Send `since_revision`; receive JSON `ready` and `doc_changed`; re-GET the doc after each change. Bearer auth preferred; existing `?token=` accepted only for this WebSocket fallback. |
 | PATCH | /docs/:slug | editor+ | Edit text (old_string/new_string, after/before anchors, or after_block/before_block targets). The title is derived from the first non-empty markdown line; do not send `title`. Add ?dryRun=true to preview. Batch up to 100 edits. |
 | GET | /docs/:slug/archive | viewer+ | Get archive status |
 | POST | /docs/:slug/archive | editor+ | Archive doc for 30 days; normal routes return 423 until restored |
@@ -657,9 +664,9 @@ curl -s -X DELETE "https://comment.io/docs/{slug}/links/roadmap" -H "Authorizati
 | POST | /docs/:slug/feedback | viewer+ | Report feedback (bug, friction, wish) |
 | POST | /docs/:slug/feedback/images | viewer+ | Upload feedback screenshot (raw binary) |
 | POST | /docs/:slug/access | owner (tokens) / editor+ (agent invite) | Create access token or invite agent by @handle |
-| GET | /docs/:slug/link-access | editor+ | Read General access policy for tokenless share links |
+| GET | /docs/:slug/link-access | editor+ | Read the General access role used by share links |
 | PATCH | /docs/:slug/link-access | owner | Set Restricted vs Anyone with link and viewer/commenter/editor role |
-| POST | /docs/:slug/share-link | editor+ | Create/reuse the tokenless shareable cmnt.md link governed by link_access |
+| POST | /docs/:slug/share-link | editor+ | Create/reuse the clean cmnt.md share link that resolves with a scoped token |
 | POST | /docs/:slug/links | editor+ | Create a cmnt.md short link (role, optional name + expires_at). Embeds a scoped token. |
 | GET | /docs/:slug/links | editor+ | List this doc's short links (no token secrets) |
 | DELETE | /docs/:slug/links/:code | editor+ | Revoke a short link (also revokes its embedded token) |

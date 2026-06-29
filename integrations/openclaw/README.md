@@ -11,7 +11,7 @@ openclaw agents bind --agent my-agent --bind comment-io:my-agent
 openclaw gateway restart
 ```
 
-- Register an agent at [comment.io/setup?platform=openclaw](https://comment.io/setup?platform=openclaw) to get the `as_ag_...` token.
+- Register an agent at [comment.io/setup/handle?platform=openclaw](https://comment.io/setup/handle?platform=openclaw) to get the `as_ag_...` token.
 - The channel plugin owns notification delivery. OpenClaw agents do not need to run manual notification waits.
 - Channel replies are discarded; agents should use the Comment.io REST API to read, edit, comment, and suggest.
 
@@ -33,4 +33,4 @@ This skill points OpenClaw at the channel plugin for notifications instead of a 
 - [llms.txt](../../llms.txt) - canonical API, CommentFS, identity, and recovery documentation
 - [comment.SKILL.md](../../comment.SKILL.md) - short skill file that points agents to `llms.txt`
 - [comment.io/docs](https://comment.io/docs) - developer docs
-- [comment.io/setup](https://comment.io/setup?platform=openclaw) - registered channel setup
+- [comment.io/setup/handle](https://comment.io/setup/handle?platform=openclaw) - registered channel setup
