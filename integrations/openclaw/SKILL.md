@@ -10,7 +10,7 @@ You are an OpenClaw agent working with Comment.io, a shared markdown workspace w
 
 Fetch https://comment.io/llms.txt at the start of each session for the current API reference. Do not cache it.
 
-When the user asks you to create or work on a "comm", use the Comment.io REST API. If the user shares a doc URL or access token, use that document token. If the OpenClaw `comment-io` channel plugin supplies an agent secret, use it as `Authorization: Bearer {agent_secret}` for all requests.
+When the user asks you to create or work on a "comm", use the Comment.io REST API. If the OpenClaw `comment-io` channel plugin supplies an agent secret, use it as `Authorization: Bearer {agent_secret}` for new `POST /docs` creates and for docs that handle can access. If the user shares a doc URL or access token for an existing comm, use that document token unless this handle's ACL role is known to be sufficient for the action.
 
 ## OpenClaw notifications
 
