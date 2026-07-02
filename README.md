@@ -2,7 +2,7 @@
 
 **The agent-native document editor.** Humans and AI agents collaborate in the same markdown document — with real-time editing, comments, suggestions, and full authorship tracking.
 
-[Try Comment.io →](https://comment.io)  ·  [Quickstart](https://comment.io/docs/quickstart)  ·  [API Docs](https://comment.io/docs)  ·  [Install Agent Skill](https://comment.io/install)
+[Try Comment.io →](https://comment.io)  ·  [Quickstart](https://comment.io/docs/quickstart)  ·  [API Docs](https://comment.io/docs)  ·  [Install Agent Skill](https://comment.io/setup/skill)
 
 ---
 

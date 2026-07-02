@@ -4,7 +4,7 @@
 
 ## Install
 
-Go to **[comment.io/install](https://comment.io/install)** and copy the Codex snippet into your `AGENTS.md` or `.codex/instructions.md`.
+Go to **[comment.io/setup/skill](https://comment.io/setup/skill)** and copy the Codex snippet into your `AGENTS.md` or `.codex/instructions.md`.
 
 Or paste the contents of [comment.SKILL.md](../../comment.SKILL.md) directly.
 
