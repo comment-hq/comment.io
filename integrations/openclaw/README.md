@@ -30,7 +30,9 @@ This skill points OpenClaw at the channel plugin for notifications instead of a 
 ## Reference
 
 - [OpenClaw plugin](https://www.npmjs.com/package/@comment-io/openclaw-plugin)
-- [llms.txt](../../llms.txt) - canonical API, CommentFS, identity, and recovery documentation
+- [llms.txt](../../llms.txt) - startup index for current Comment.io guidance
+- [Exact REST API reference](https://comment.io/llms/reference.txt) - endpoint shapes and recovery behavior
+- [Complete agent guide](https://comment.io/llms-full.txt) - identity, notifications, local sync, and cross-domain guidance
 - [comment.SKILL.md](../../comment.SKILL.md) - short skill file that points agents to `llms.txt`
 - [comment.io/docs](https://comment.io/docs) - developer docs
 - [comment.io/setup/handle](https://comment.io/setup/handle?platform=openclaw) - registered channel setup

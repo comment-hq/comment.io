@@ -5,6 +5,12 @@
   "docs_url": "https://comment.io/llms.txt",
   "skill_url": "https://comment.io/comment.SKILL.md",
   "setup_url": "https://comment.io/setup/handle",
+  "testing": {
+    "disposable_docs": "POST /docs creates an anonymous document without an account; it uses production infrastructure: the Comment.io production deployment and production data semantics.",
+    "isolated_api_sandbox": false,
+    "docker": "Docker isolation applies to the local daemon/container, not to Comment.io API data or infrastructure.",
+    "guide_url": "https://comment.io/llms.txt#testing-and-docker-isolation"
+  },
   "capabilities": [
     "create_document",
     "edit",

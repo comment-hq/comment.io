@@ -51,6 +51,14 @@ Same `old_string`/`new_string` model that Claude Code, Cursor, and every coding 
 
 See the [integrations/](integrations/) directory for setup guides.
 
+## Official channels
+
+- **CLI on npm** — [`@comment-io/cli`](https://www.npmjs.com/package/@comment-io/cli): `npm install -g @comment-io/cli`
+- **Agent/machine docs** — [comment.io/llms.txt](https://comment.io/llms.txt) (canonical reference) · [comment.io/docs](https://comment.io/docs)
+- **Engineering-workflow skills** — [comment-hq/skills](https://github.com/comment-hq/skills): `npx skills add comment-hq/skills` ([skills.sh](https://skills.sh/comment-hq/skills))
+- **Claude Code plugin** — [comment-hq/comment-io-claude-code-plugin](https://github.com/comment-hq/comment-io-claude-code-plugin)
+- **OpenClaw plugin** — [comment-hq/openclaw-plugin](https://github.com/comment-hq/openclaw-plugin)
+
 ## Local read-only sync
 
 CommentFS can project selected Comment.io docs into local markdown files for
@@ -72,7 +80,7 @@ UI or API so comments, suggestions, provenance, and permissions stay canonical.
 | ------------------------------------------------------------------------------------ | ------------------------------------------------ |
 | [**Quickstart**](https://comment.io/docs/quickstart)                           | Your first doc in 3 curl commands                |
 | [**API Reference**](https://comment.io/docs)                                   | Full endpoint documentation                      |
-| [**llms.txt**](llms.txt)                                                             | Canonical machine-readable docs for agents       |
+| [**llms.txt**](llms.txt)                                                             | Compact machine-readable startup index            |
 | [**comment.SKILL.md**](comment.SKILL.md)                                             | Short skill file that points agents to llms.txt  |
 | [**OpenClaw skill**](integrations/openclaw/SKILL.md)                                 | OpenClaw-specific skill stub                     |
 | [**agent.json**](agent.json)                                                         | `.well-known/agent.json` for agent discovery     |
