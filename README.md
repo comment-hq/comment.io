@@ -2,32 +2,41 @@
 
 **The agent-native document editor.** Humans and AI agents collaborate in the same markdown document — with real-time editing, comments, suggestions, and full authorship tracking.
 
-[Try Comment.io →](https://comment.io)  ·  [Quickstart](https://comment.io/docs/quickstart)  ·  [API Docs](https://comment.io/docs)  ·  [Install Agent Skill](https://comment.io/setup/skill)
+[Try Comment.io →](https://comment.io)  ·  [Agent start](https://comment.io/llms.txt)  ·  [REST reference](https://comment.io/llms/reference.txt)  ·  [Optional skill](https://comment.io/setup/skill)
 
 ---
 
-## Create a doc in one request
+## Start with what already works
 
-```bash
-curl -X POST https://comment.io/docs \
-  -H "Content-Type: application/json" \
-  -d '{"markdown": "# Hello World", "title": "My First Comm"}'
-```
+If Comment.io tools are already available, follow their own workflow immediately.
+For an existing comm, the standard MCP surface uses `open_comm`, then
+`read_comm`; use `create_comm` only when the human requested a new comm, never as
+setup verification. An account-scoped document request tool follows its own
+relative-path contract. For a supplied comm plus authenticated HTTPS, resolve a
+clean shortlink without Authorization or redirects, follow its confirmation
+once, and accept its token-bearing `/d/{slug}` Location only when the final
+origin and slug match its `api_reference_url` and `slug`. Then send
+`X-Comment-Share-Ingress: 1` on the first authenticated `?docs` GET at that
+final origin, switch to returned `your_token`, and follow that handoff. With URL
+fetch only (no browser UI/headers), use any supplied share URL now. Add
+`mode=agent` without removing its query and follow one confirmation with the
+same token and mode. For a bare slug or token-free comm URL, first try
+the final Comment.io origin's `/d/{slug}?mode=agent`; continue only when `markdown` is
+non-null. If it is null or says no readable state, ask once for **Share → Copy
+for agent**. The envelope is read-only. With interactive browser control, use
+the visible editor and comments UI. A hosted MCP connector takes only the
+slug or token-free URL; a local MCP tool may accept the full share URL only when
+its description says so. Use the [startup index](https://comment.io/llms.txt)
+only when the current route does not cover the task.
 
-You get back an `id`, an `access_token`, and a `share_url`. Hand the token to any agent. Per-doc tokens register a display name once with `POST /agents/identify`; registered agents use their `agent_secret` directly.
+## Direct REST
 
-No account. No OAuth. No SDK. Just HTTP.
-
-## Edit with the pattern agents already know
-
-```bash
-curl -X PATCH https://comment.io/docs/{id} \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json" \
-  -d '{"edits": [{"old_string": "Hello World", "new_string": "Hello Agents"}]}'
-```
-
-Same `old_string`/`new_string` model that Claude Code, Cursor, and every coding agent already uses. No character offsets. No operational transforms.
+When the user asks for a new comm and no existing tool or browser route can
+create it, follow the live [REST setup path](https://comment.io/llms/setup/rest.txt).
+It gives agents one current route through identity, anonymous fallback,
+per-doc tokens, creation, and revision-safe edits. Endpoint shapes and recovery
+behavior live in the [exact REST reference](https://comment.io/llms/reference.txt).
+There is no SDK requirement; the protocol is plain HTTPS.
 
 ## What makes it different
 
@@ -37,7 +46,7 @@ Same `old_string`/`new_string` model that Claude Code, Cursor, and every coding 
 | **Agent identity**    | ✅ Registered handles + doc-scoped tokens           | ❌                          | ❌                         |
 | **Provenance**        | ✅ Per-edit attribution, human vs AI                | ❌                          | ❌                         |
 | **Multi-agent**       | ✅ Multiple agents, real-time, with loop prevention | ❌                          | ❌                         |
-| **@mention agents**   | ✅ Triggers webhooks                                | ❌                          | ❌                         |
+| **@mention agents**   | ✅ Connector inbox, local daemon, or webhooks        | ❌                          | ❌                         |
 | **No login required** | ✅                                                  | ❌ Google account           | ❌ Account required        |
 | **Suggestion mode**   | ✅ API + UI                                         | ✅ UI only                  | ❌                         |
 | **Real-time sync**    | ✅ Yjs CRDTs + WebSocket                            | ✅ OT                       | ✅                         |
@@ -45,8 +54,9 @@ Same `old_string`/`new_string` model that Claude Code, Cursor, and every coding 
 ## Integrations
 
 * **Claude Code** — [Plugin](integrations/claude-code/) with Comment.io skills and local CLI notification checks
-* **OpenClaw** — [Channel plugin](integrations/openclaw/) for real-time @mention notifications through OpenClaw
-* **Codex** — [AGENTS.md snippet](integrations/codex/) for Codex CLI agents
+* **ChatGPT / Claude chat** — [Hosted MCP connector](https://comment.io/connect) with OAuth; no local install required
+* **OpenClaw** — [Channel plugin](integrations/openclaw/) with an account-scoped `comment_io_request` tool after exact binding; automatic @mention delivery is separate and requires the matching installed full-handle profile plus a persistent Comment CLI/daemon on a long-lived computer ([focused setup](https://comment.io/llms/setup/full.txt))
+* **Codex** — [Universal skill installer](integrations/codex/) plus [optional local MCP](https://comment.io/llms/setup/mcp.txt) through the Comment.io CLI
 * **Any HTTP client** — It's REST. If you can `curl`, you can collaborate.
 
 See the [integrations/](integrations/) directory for setup guides.
@@ -54,32 +64,31 @@ See the [integrations/](integrations/) directory for setup guides.
 ## Official channels
 
 - **CLI on npm** — [`@comment-io/cli`](https://www.npmjs.com/package/@comment-io/cli): `npm install -g @comment-io/cli`
-- **Agent/machine docs** — [comment.io/llms.txt](https://comment.io/llms.txt) (canonical reference) · [comment.io/docs](https://comment.io/docs)
+- **Agent/machine docs** — [comment.io/llms.txt](https://comment.io/llms.txt) (compact startup index) · [exact REST reference](https://comment.io/llms/reference.txt)
 - **Engineering-workflow skills** — [comment-hq/skills](https://github.com/comment-hq/skills): `npx skills add comment-hq/skills` ([skills.sh](https://skills.sh/comment-hq/skills))
 - **Claude Code plugin** — [comment-hq/comment-io-claude-code-plugin](https://github.com/comment-hq/comment-io-claude-code-plugin)
 - **OpenClaw plugin** — [comment-hq/openclaw-plugin](https://github.com/comment-hq/openclaw-plugin)
 
-## Local read-only sync
+## Local sync
 
-CommentFS can project selected Comment.io docs into local markdown files for
-search, context, and agent inspection. Generate a CommentFS key in settings,
-enable **Sync locally** on a document, then run:
+CommentFS can project the configured Comment.io library scope into local
+Markdown files for search, context, and agent inspection. Follow the live
+[local-sync guide](https://comment.io/llms/local-sync.txt); it starts by
+selecting the exact saved origin/account and letting the registry resolve its
+scoped home, then covers status, login, one-shot sync, and the optional
+background worker without relying on an ambient account.
 
-```bash
-comment sync login --api-key <usk_...>
-comment sync
-comment sync watch
-```
-
-The local markdown files are read-only projections. Edit through the Comment.io
-UI or API so comments, suggestions, provenance, and permissions stay canonical.
+Projections are read-only by default. The guide also covers the separate human
+browser consent that can make **My Files** projections writable on that
+computer. Shared With Me, Team Wiki, and Botlets brain projections remain
+read-only.
 
 ## Documentation
 
 |                                                                                      |                                                  |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| [**Quickstart**](https://comment.io/docs/quickstart)                           | Your first doc in 3 curl commands                |
-| [**API Reference**](https://comment.io/docs)                                   | Full endpoint documentation                      |
+| [**Agent start**](https://comment.io/llms.txt)                                 | Capability-first startup index                   |
+| [**API Reference**](https://comment.io/llms/reference.txt)                    | Exact REST endpoint behavior and recovery        |
 | [**llms.txt**](llms.txt)                                                             | Compact machine-readable startup index            |
 | [**comment.SKILL.md**](comment.SKILL.md)                                             | Short skill file that points agents to llms.txt  |
 | [**OpenClaw skill**](integrations/openclaw/SKILL.md)                                 | OpenClaw-specific skill stub                     |
