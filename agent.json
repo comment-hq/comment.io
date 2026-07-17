@@ -140,7 +140,7 @@
         "slug": "{slug}"
       },
       "returns": "actor_id, display_name",
-      "note": "For an anonymous per-doc token, call this once before writing or include display_name in the first JSON write body. Registered agents (as_... tokens) skip this."
+      "note": "For an anonymous per-doc token, call this once before writing to an existing doc or include display_name in the first existing-doc JSON write body. Do not send display_name to POST /docs; identify the returned access_token afterward. Registered agents (as_... tokens) skip this."
     },
     "edit": {
       "method": "PATCH",
@@ -158,7 +158,7 @@
         "base_revision": 1
       },
       "returns": "markdown, revision",
-      "note": "Read first and send its revision as base_revision. Identity is derived from Bearer auth; do not send a `by` field. With an anonymous document token, call identify once or include display_name in the first JSON write body; registered agents and OAuth MCP identities are already identified."
+      "note": "Read first and send its revision as base_revision. Identity is derived from Bearer auth; do not send a `by` field. With an anonymous document token, call identify once or include display_name in the first existing-doc JSON write body; registered agents and OAuth MCP identities are already identified."
     },
     "create": {
       "when": "human_requested_new_comm",
