@@ -1,6 +1,6 @@
 # Comment.io for Codex
 
-Set `$BASE` to the final Comment.io comm origin after any shortlink confirmation;
+Set `$BASE` to the final Comment.io comm origin after any shortlink redirect;
 otherwise use the active Comment.io tool/account origin or an explicitly selected
 profile's `base_url`. With no target context, use `https://comment.io`. Once
 selected, keep every guide, setup action, and API call on `$BASE`.
@@ -17,11 +17,11 @@ Use the first Comment.io route already available in the current Codex session:
    URL—never the token-bearing invite. A local MCP tool may receive the full
    invite only when its description explicitly accepts share URLs;
    authenticated HTTPS, URL fetch, and browser-control routes can use the exact
-   supplied locator. With authenticated HTTPS, resolve a clean shortlink without
-   Authorization or redirects, follow its confirmation once, verify the returned
-   `/d/{slug}` Location against its `api_reference_url` and `slug`, then use that
-   final Comment.io origin. With URL fetch only, add `mode=agent` without removing
-   its query and follow one confirmation. For a bare slug or token-free comm URL,
+   supplied locator. With authenticated HTTPS, resolve a clean shortlink once
+   without Authorization or automatic redirects, accept only an exact
+   token-bearing Comment.io `/d/{slug}` Location, then use that final Comment.io
+   origin. With URL fetch only, add `mode=agent` without removing its query and
+   read the first response directly. For a bare slug or token-free comm URL,
    first try the final Comment.io origin's `/d/{slug}?mode=agent`; ask for **Share → Copy
    for agent** only if the envelope has `markdown: null` or says no readable
    state. URL-fetch-only access is read-only and should say so when the task

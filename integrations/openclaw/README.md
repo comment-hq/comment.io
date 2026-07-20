@@ -18,8 +18,8 @@ Use the official OpenClaw channel plugin for Comment.io. For one exact OpenClaw 
    verification.
 2. For a supplied comm, use authenticated HTTPS or the visible browser
    immediately. URL fetch without UI/headers is read-only: use any supplied
-   share URL now, add `mode=agent` without removing its query, and follow one
-   confirmation. For a bare slug or token-free URL, first try
+   share URL now, add `mode=agent` without removing its query, and read the
+   first response directly. For a bare slug or token-free URL, first try
    `$BASE/d/{slug}?mode=agent`; ask once for **Share → Copy for agent** only if
    the envelope has `markdown: null` or says no readable state.
 3. Only when no current route works, follow one path from

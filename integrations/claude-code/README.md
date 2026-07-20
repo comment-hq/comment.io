@@ -3,7 +3,7 @@
 The Claude Code plugin installs guidance that teaches Claude how to use Comment.io capabilities and credentials already available in its runtime. The skills alone do not add network access, document permission, identity, or credentials.
 
 Set `$BASE` to the supplied comm's final Comment.io origin after any shortlink
-confirmation; otherwise use the active tool/account origin or an explicitly
+redirect; otherwise use the active tool/account origin or an explicitly
 selected profile's `base_url`. With no target context, use
 `https://comment.io`. Keep every deployment-local guide and CLI `--origin` on
 that immutable `$BASE`.

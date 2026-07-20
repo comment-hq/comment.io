@@ -13,14 +13,13 @@ For an existing comm, the standard MCP surface uses `open_comm`, then
 `read_comm`; use `create_comm` only when the human requested a new comm, never as
 setup verification. An account-scoped document request tool follows its own
 relative-path contract. For a supplied comm plus authenticated HTTPS, resolve a
-clean shortlink without Authorization or redirects, follow its confirmation
-once, and accept its token-bearing `/d/{slug}` Location only when the final
-origin and slug match its `api_reference_url` and `slug`. Then send
+clean shortlink once without Authorization or automatic redirects, and accept
+only an exact token-bearing Comment.io `/d/{slug}` Location. Then send
 `X-Comment-Share-Ingress: 1` on the first authenticated `?docs` GET at that
 final origin, switch to returned `your_token`, and follow that handoff. With URL
 fetch only (no browser UI/headers), use any supplied share URL now. Add
-`mode=agent` without removing its query and follow one confirmation with the
-same token and mode. For a bare slug or token-free comm URL, first try
+`mode=agent` without removing its query and read the first response directly.
+For a bare slug or token-free comm URL, first try
 the final Comment.io origin's `/d/{slug}?mode=agent`; continue only when `markdown` is
 non-null. If it is null or says no readable state, ask once for **Share → Copy
 for agent**. The envelope is read-only. With interactive browser control, use
@@ -80,8 +79,7 @@ background worker without relying on an ambient account.
 
 Projections are read-only by default. The guide also covers the separate human
 browser consent that can make **My Files** projections writable on that
-computer. Shared With Me, Team Wiki, and Botlets brain projections remain
-read-only.
+computer. Shared With Me and Team Wiki projections remain read-only.
 
 ## Documentation
 

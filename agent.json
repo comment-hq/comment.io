@@ -29,7 +29,7 @@
       {
         "capability": "non_interactive_url_fetch_without_headers",
         "when": "You have only URL fetch (no browser UI/headers) for the requested comm action",
-        "action": "Use any supplied URL with `mode=agent`; preserve its query through one confirmation. For a bare slug or token-free URL, first try `https://comment.io/d/{slug}?mode=agent`. Ask for **Share → Copy for agent** only on `markdown: null` or no readable state. Read-only. Request a connector, browser, or header-capable HTTPS for writes."
+        "action": "Use any supplied URL with `mode=agent` and read it directly. For a bare slug or token-free URL, first try `https://comment.io/d/{slug}?mode=agent`. Ask for **Share → Copy for agent** only on `markdown: null` or no readable state. Read-only. Request a connector, browser, or header-capable HTTPS for writes."
       },
       {
         "capability": "interactive_browser",
