@@ -13,7 +13,7 @@ For an existing comm, the standard MCP surface uses `open_comm`, then
 `read_comm`; use `create_comm` only when the human requested a new comm, never as
 setup verification. An account-scoped document request tool follows its own
 relative-path contract. For a supplied comm plus authenticated HTTPS, resolve a
-clean shortlink once without Authorization or automatic redirects, and accept
+clean shortlink once with `Accept: text/html, application/json;q=0`, without Authorization or automatic redirects, and accept
 only an exact token-bearing Comment.io `/d/{slug}` Location. Then send
 `X-Comment-Share-Ingress: 1` on the first authenticated `?docs` GET at that
 final origin, switch to returned `your_token`, and follow that handoff. With URL
@@ -23,9 +23,11 @@ For a bare slug or token-free comm URL, first try
 the final Comment.io origin's `/d/{slug}?mode=agent`; continue only when `markdown` is
 non-null. If it is null or says no readable state, ask once for **Share → Copy
 for agent**. The envelope is read-only. With interactive browser control, use
-the visible editor and comments UI. A hosted MCP connector takes only the
-slug or token-free URL; a local MCP tool may accept the full share URL only when
-its description says so. Use the [startup index](https://comment.io/llms.txt)
+the visible editor and comments UI. A hosted MCP connector takes a slug,
+token-free document URL, or exact clean CMNT/configured shortlink only in
+`url_or_slug`; never a raw token-query URL or clean link embedded elsewhere. A
+local MCP tool may accept the full share URL only when its description says so.
+Use the [startup index](https://comment.io/llms.txt)
 only when the current route does not cover the task.
 
 ## Direct REST

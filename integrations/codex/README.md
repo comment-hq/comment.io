@@ -13,8 +13,10 @@ Use the first Comment.io route already available in the current Codex session:
    Comment.io tools follow their own open/read workflow and `next_actions`.
 2. If the human supplied a comm, use that supplied locator immediately through
    the first available route that accepts it; do not ask for a replacement
-   handoff first. Give a hosted MCP tool only the slug or token-free comm
-   URL—never the token-bearing invite. A local MCP tool may receive the full
+   handoff first. Give a hosted MCP tool a slug, token-free document URL, or
+   exact clean CMNT/configured shortlink in `url_or_slug`; it resolves a clean
+   link privately at its configured role. Never give it a raw `?token=` invite
+   or embed the clean link in another field. A local MCP tool may receive the full
    invite only when its description explicitly accepts share URLs;
    authenticated HTTPS, URL fetch, and browser-control routes can use the exact
    supplied locator. With authenticated HTTPS, resolve a clean shortlink once

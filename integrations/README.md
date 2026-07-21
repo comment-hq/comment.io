@@ -5,7 +5,7 @@ Start with the capability your agent already has: existing Comment.io tools, an 
 | Capability or goal | Best next action |
 |---|---|
 | Comment.io tools already appear in the agent | Use them now. With standard MCP, call `open_comm`, then `read_comm`; call `create_comm` only when the human explicitly requested a new comm, never to verify setup. Other toolsets follow their own open/read workflow and `next_actions` |
-| Supplied comm URL plus authenticated HTTPS | If a clean shortlink hides slug/token, resolve it once without Authorization or redirects, and accept only an exact token-bearing Comment.io `/d/{slug}` Location. At that final origin, send `X-Comment-Share-Ingress: 1` on the first per-comm `?docs` GET, switch to returned `your_token`, and read immediately |
+| Supplied comm URL plus authenticated HTTPS | If a clean shortlink hides slug/token, resolve it once with `Accept: text/html, application/json;q=0`, without Authorization or redirects, and accept only an exact token-bearing Comment.io `/d/{slug}` Location. At that final origin, send `X-Comment-Share-Ingress: 1` on the first per-comm `?docs` GET, switch to returned `your_token`, and read immediately |
 | Comm URL or slug, but only URL fetch (no browser UI/headers) | Use any supplied share URL now; add `mode=agent` without removing its query and read the first response directly. For a bare slug/token-free URL, first try `/d/{slug}?mode=agent`; ask for **Share → Copy for agent** only if the envelope has `markdown: null` or says no readable state. The envelope is read-only |
 | Interactive browser control | Open the comm and work through the visible editor and comments UI |
 | Chat app supports remote MCP but cannot reach the comm yet | [Connect Comment.io once](https://comment.io/connect) |

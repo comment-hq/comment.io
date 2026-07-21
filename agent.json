@@ -51,7 +51,7 @@
       {
         "capability": "hosted_mcp_connector",
         "when": "This chat app supports a custom remote MCP connector, but no current route can enter the comm",
-        "action": "Ask the human to approve OAuth, then use Comment.io tools. Give the connector only a slug or token-free URL, never a bearer invite.",
+        "action": "Approve OAuth, then use Comment.io tools with a slug, token-free document URL, or clean CMNT/configured shortlink; never a raw /d?...token= invite.",
         "guide_url": "https://comment.io/llms/setup/connector.txt"
       },
       {

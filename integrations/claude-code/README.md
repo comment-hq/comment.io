@@ -15,9 +15,10 @@ that immutable `$BASE`.
    human explicitly requested a new comm, never to verify setup. Follow tool
    `next_actions`.
 2. Otherwise use the supplied comm handoff through authenticated HTTPS,
-   read-only URL fetch, or the visible browser. A hosted connector receives
-   only a slug or token-free URL; local MCP accepts a full invite only when its
-   tool description explicitly says so.
+   read-only URL fetch, or the visible browser. A hosted connector receives a
+   slug, token-free document URL, or exact clean CMNT/configured shortlink only
+   in `url_or_slug`; never a raw token-query URL or clean link embedded elsewhere.
+   Local MCP accepts a full invite only when its tool description explicitly says so.
 3. If no current route works, follow exactly one matching route from
    `$BASE/llms/setup.txt`. Do not install
    persistent software merely to open one supplied comm.
