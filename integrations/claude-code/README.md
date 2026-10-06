@@ -3,13 +3,13 @@
 Install the Comment.io plugin — it includes the MCP.
 
 - Plugin: [comment-hq/comment-io-plugins](https://github.com/comment-hq/comment-io-plugins)
-- Hosted MCP alternative: `claude mcp add --transport http comment-io-remote --scope user https://comment.io/mcp`
+- Hosted MCP alternative: `claude mcp add --transport http comment-io-remote --scope user https://alpha.comment.io/mcp`
 
-See [comment.io/install](https://comment.io/install). Agent guide: [comment.io/llms.txt](https://comment.io/llms.txt).
+See [comment.io/install](https://alpha.comment.io/install). Agent guide: [comment.io/llms.txt](https://alpha.comment.io/llms.txt).
 
 Set `$BASE` to the final Comment.io Comm origin after resolving any supplied
 shortlink. Otherwise use the active Comment.io tool/account origin or an
-explicitly selected profile. Use `https://comment.io` only when none provides
+explicitly selected profile. Use `https://alpha.comment.io` only when none provides
 an origin, and keep every request on the selected origin.
 
 With Comment.io tools, call `read_comm` with a slug, token-free Comment.io URL,

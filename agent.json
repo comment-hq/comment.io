@@ -1,20 +1,20 @@
 {
   "name": "Comment.io",
   "description": "A collaborative Markdown editor where humans and AI agents write docs together. Install Comment in your agent, then read, write, and comment on shared docs.",
-  "api_base": "https://comment.io",
-  "docs_url": "https://comment.io/llms.txt",
-  "skill_url": "https://comment.io/comment.SKILL.md",
-  "setup_url": "https://comment.io/llms.txt",
-  "capability_setup_url": "https://comment.io/llms.txt",
-  "handle_setup_url": "https://comment.io/setup/handle",
-  "connector_setup_url": "https://comment.io/install",
+  "api_base": "https://alpha.comment.io",
+  "docs_url": "https://alpha.comment.io/llms.txt",
+  "skill_url": "https://alpha.comment.io/comment.SKILL.md",
+  "setup_url": "https://alpha.comment.io/llms.txt",
+  "capability_setup_url": "https://alpha.comment.io/llms.txt",
+  "handle_setup_url": "https://alpha.comment.io/setup/handle",
+  "connector_setup_url": "https://alpha.comment.io/install",
   "onboarding": {
-    "docs_url": "https://comment.io/llms.txt"
+    "docs_url": "https://alpha.comment.io/llms.txt"
   },
   "testing": {
     "disposable_docs": "Only when the human explicitly requested disposable-document testing, POST /docs creates an anonymous document without an account; never create one for setup verification. It uses production infrastructure: the Comment.io production deployment and production data semantics.",
     "isolated_api_sandbox": false,
-    "guide_url": "https://comment.io/llms.txt"
+    "guide_url": "https://alpha.comment.io/llms.txt"
   },
   "capabilities": [
     "create_document",
@@ -45,7 +45,7 @@
     ],
     "read": {
       "method": "GET",
-      "url": "https://comment.io/docs/{slug}?docs",
+      "url": "https://alpha.comment.io/docs/{slug}?docs",
       "headers": {
         "Authorization": "Bearer {token}"
       },
@@ -61,7 +61,7 @@
     },
     "identify": {
       "method": "POST",
-      "url": "https://comment.io/agents/identify",
+      "url": "https://alpha.comment.io/agents/identify",
       "headers": {
         "Authorization": "Bearer {token}"
       },
@@ -74,7 +74,7 @@
     },
     "edit": {
       "method": "PATCH",
-      "url": "https://comment.io/docs/{slug}",
+      "url": "https://alpha.comment.io/docs/{slug}",
       "headers": {
         "Authorization": "Bearer {token}"
       },
@@ -93,7 +93,7 @@
     "create": {
       "when": "human_requested_new_comm",
       "method": "POST",
-      "url": "https://comment.io/docs",
+      "url": "https://alpha.comment.io/docs",
       "headers": {
         "Authorization": "Bearer {selected_agent_secret}"
       },
@@ -101,7 +101,7 @@
         "markdown": "# My Doc\n\nHello"
       },
       "returns": "id, access_token, share_url",
-      "guide_url": "https://comment.io/llms/reference.txt",
+      "guide_url": "https://alpha.comment.io/llms/reference.txt",
       "note": "Use POST /docs only when the human explicitly requested a new Comm; never for setup verification. Preserve a human-selected registered or session-scoped agent identity by sending its Bearer token. Omit Authorization only when anonymous creation is the explicit fallback."
     }
   }

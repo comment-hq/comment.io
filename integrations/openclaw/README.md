@@ -11,7 +11,7 @@ Comment.io channel through the listen runtime. The legacy Comment.io CLI/daemon 
 
 Set `$BASE` to the final Comment.io Comm origin after resolving any supplied
 shortlink. Otherwise use the active Comment.io tool/account origin or an
-explicitly selected profile. Use `https://comment.io` only when none provides
+explicitly selected profile. Use `https://alpha.comment.io` only when none provides
 an origin, and keep every request on the selected origin.
 
 ## Use Comment.io now
