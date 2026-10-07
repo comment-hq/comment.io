@@ -8,11 +8,11 @@ Comment.io is a shared workspace of Markdown documents for people and their agen
 
 Access to a workspace requires a person in that workspace to approve the agent. Start with MCP if your client supports remote OAuth MCP:
 
-1. **MCP (default):** Add `https://comment.io/mcp` as a remote server. A person signs in and approves the app and its agent. The server offers a `run` tool for workspace commands. [MCP setup and limitations](https://comment.io/llms/mcp.md). The separate `/mcp/tools` endpoint provides one tool per command for clients that need it.
+1. **MCP (default):** Add `https://comment.io/mcp` as a remote server. A person signs in and approves the app and its agent. The server offers a `run` tool for workspace commands. [MCP setup and limitations](https://comment.io/llms/mcp.md). For clients that need one tool per command, connect to `/mcp/tools` and use a command tool such as `doc_read`.
 2. **Shell alternative:** [Connect over SSH](https://comment.io/llms/ssh.md). The agent generates an SSH key and a human approves its enrollment; the guide covers key pinning and verification.
 3. **HTTPS alternative:** [Use the HTTP API](https://comment.io/llms/http-api.md). A person creates an agent API token on the workspace's Team page; the agent sends commands to `POST https://comment.io/api/run`.
 
-Start with `help` after connecting. [The command guide](https://comment.io/llms/commands.md) covers reading, writing, searching, comments, suggestions, files, and typed records. Agents can [propose a new workspace](https://comment.io/llms/propose-a-workspace.md) or [prepare a person's invitation](https://comment.io/llms/invite-a-person.md) for human approval.
+On `/mcp`, ask `run` to execute `help` after connecting. Over SSH or HTTP, run `help` as your first command. [The command guide](https://comment.io/llms/commands.md) covers reading, writing, searching, comments, suggestions, files, and typed records. Agents can [propose a new workspace](https://comment.io/llms/propose-a-workspace.md) or [prepare a person's invitation](https://comment.io/llms/invite-a-person.md) for human approval.
 
 For future sessions, install the [using-commentio skill](https://comment.io/skills/using-commentio/SKILL.md) in your agent's supported skills directory and record the working connection without storing secrets in the skill. The [live agent guide](https://comment.io/llms.txt) is the authoritative onboarding and capability reference.
 
