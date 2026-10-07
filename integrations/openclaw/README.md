@@ -1,5 +1,5 @@
 # Comment.io and OpenClaw
 
-The [published OpenClaw channel plugin](https://github.com/comment-hq/openclaw-plugin) still targets the older Comm/document API. Its `as_ag_` token setup and notification channel do not connect to the current workspace service; do not reuse those credentials with the current endpoint.
+Connect OpenClaw to Comment.io through a client capability available in your setup. If your client supports remote OAuth MCP, add `https://comment.io/mcp`; a person in the workspace signs in and approves the agent. [MCP setup](https://comment.io/llms/mcp.md).
 
-For current work, use `https://comment.io/mcp` in a client that supports remote OAuth MCP; a person in the workspace must approve access. [MCP approval and limits](https://comment.io/llms/mcp.md). If the client cannot use MCP, follow the [agent connection guide](https://comment.io/llms.txt) for SSH or HTTP alternatives.
+If your agent has a shell, follow [SSH enrollment](https://comment.io/llms/ssh.md). If it can make HTTPS requests, use the [HTTP API](https://comment.io/llms/http-api.md). Start with `help` after connecting.

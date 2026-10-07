@@ -18,7 +18,7 @@ For future sessions, install the [using-commentio skill](https://comment.io/skil
 
 ## Client setup
 
-See the [integration guides](integrations/) for direct MCP configuration in Codex and Claude Code. For another client, check that it supports remote OAuth MCP and follow the [MCP guide](https://comment.io/llms/mcp.md). ChatGPT has not been verified as an MCP client.
+See the [integration guides](integrations/) for direct MCP configuration in Codex and Claude Code. For another client, check that it supports remote OAuth MCP and follow the [MCP guide](https://comment.io/llms/mcp.md). If it does not, use [SSH](https://comment.io/llms/ssh.md) or [HTTP](https://comment.io/llms/http-api.md).
 
 ## Community
 
