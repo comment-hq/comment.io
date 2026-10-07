@@ -1,75 +1,27 @@
 # Comment.io
 
-**The agent-native document editor.** Humans and AI agents collaborate in the same markdown document — with real-time editing, comments, suggestions, and full authorship tracking.
+Comment.io is a shared workspace of Markdown documents for people and their agents. People review, comment, suggest changes and edit in the browser; agents read and contribute over MCP, SSH or HTTP. Keep the decisions and corrections in the workspace so the next agent can pick up the work.
 
-[Try Comment.io →](https://alpha.comment.io)  ·  [Install](https://alpha.comment.io/install)  ·  [Agent guide](https://alpha.comment.io/llms.txt)  ·  [REST reference](https://alpha.comment.io/llms/reference.txt)
+[Get started](https://comment.io/llms.txt) · [Use cases](https://comment.io/use-cases.md) · [FAQ](https://comment.io/faq.md) · [Support](mailto:support@comment.io)
 
----
+## Connect an agent
 
-You install Comment in your agent, then you and your agents read, write, and comment on shared docs.
+Access to a workspace requires a person in that workspace to approve the agent. Start with MCP if your client supports remote OAuth MCP:
 
-## Install
+1. **MCP (default):** Add `https://comment.io/mcp` as a remote server. A person signs in and approves the app and its agent. The server offers a `run` tool for workspace commands. [MCP setup and limitations](https://comment.io/llms/mcp.md). The separate `/mcp/tools` endpoint provides one tool per command for clients that need it.
+2. **Shell alternative:** [Connect over SSH](https://comment.io/llms/ssh.md). The agent generates an SSH key and a human approves its enrollment; the guide covers key pinning and verification.
+3. **HTTPS alternative:** [Use the HTTP API](https://comment.io/llms/http-api.md). A person creates an agent API token on the workspace's Team page; the agent sends commands to `POST https://comment.io/api/run`.
 
-- **Plugin** (includes the MCP) — Claude Code, Claude Cowork, Codex, OpenAI Work.
-- **Hosted MCP** — every other MCP-capable agent (Claude Chat, ChatGPT, anything else).
+Start with `help` after connecting. [The command guide](https://comment.io/llms/commands.md) covers reading, writing, searching, comments, suggestions, files, and typed records. Agents can [propose a new workspace](https://comment.io/llms/propose-a-workspace.md) or [prepare a person's invitation](https://comment.io/llms/invite-a-person.md) for human approval.
 
-See [comment.io/install](https://alpha.comment.io/install). Agent guide: [comment.io/llms.txt](https://alpha.comment.io/llms.txt).
+For future sessions, install the [using-commentio skill](https://comment.io/skills/using-commentio/SKILL.md) in your agent's supported skills directory and record the working connection without storing secrets in the skill. The [live agent guide](https://comment.io/llms.txt) is the authoritative onboarding and capability reference.
 
-For an existing Comm, use `read_comm` with a slug, token-free Comment.io URL, or exact clean CMNT/configured shortlink in `url_or_slug`. Never pass a raw `?token=` URL. Call `create_comm` only when the human requested a new Comm.
+## Client setup
 
-## Direct REST
-
-When the user asks for a new Comm and no existing tool or browser route can
-create it, follow the live [REST reference](https://alpha.comment.io/llms/reference.txt).
-There is no SDK requirement; the protocol is plain HTTPS.
-
-## What makes it different
-
-|                       | Comment.io                                         | Google Docs                | Notion                    |
-| --------------------- | -------------------------------------------------- | -------------------------- | ------------------------- |
-| **Agent REST API**    | ✅ Full CRUD + comments + suggestions               | ❌ Batch import/export only | ❌ No document editing API |
-| **Agent identity**    | ✅ Registered handles + doc-scoped tokens           | ❌                          | ❌                         |
-| **Provenance**        | ✅ Per-edit attribution, human vs AI                | ❌                          | ❌                         |
-| **Multi-agent**       | ✅ Multiple agents, real-time, with loop prevention | ❌                          | ❌                         |
-| **@mention agents**   | ✅ Connector inbox or webhooks                       | ❌                          | ❌                         |
-| **No login required** | ✅                                                  | ❌ Google account           | ❌ Account required        |
-| **Suggestion mode**   | ✅ API + UI                                         | ✅ UI only                  | ❌                         |
-| **Real-time sync**    | ✅ Yjs CRDTs + WebSocket                            | ✅ OT                       | ✅                         |
-
-## Integrations
-
-* **Claude Code** — [plugin](https://github.com/comment-hq/comment-io-plugins) (includes the MCP)
-* **Codex** — [plugin](https://github.com/comment-hq/comment-io-plugins) (includes the MCP)
-* **Claude Cowork / OpenAI Work** — plugin includes the MCP; connect at [comment.io/install](https://alpha.comment.io/install)
-* **ChatGPT / Claude chat / other MCP-capable agents** — [Hosted MCP connector](https://alpha.comment.io/install)
-* **OpenClaw** — [Channel plugin](integrations/openclaw/)
-* **Any HTTP client** — It's REST. If you can `curl`, you can collaborate.
-
-See the [integrations/](integrations/) directory for setup guides.
-
-## Official channels
-
-- **Install** — [comment.io/install](https://alpha.comment.io/install)
-- **Agent guide** — [comment.io/llms.txt](https://alpha.comment.io/llms.txt) · [exact REST reference](https://alpha.comment.io/llms/reference.txt)
-- **Engineering-workflow skills** — [comment-hq/skills](https://github.com/comment-hq/skills): `npx skills add comment-hq/skills` ([skills.sh](https://skills.sh/comment-hq/skills))
-- **Claude Code and Codex plugins** — [comment-hq/comment-io-plugins](https://github.com/comment-hq/comment-io-plugins)
-- **OpenClaw plugin** — [comment-hq/openclaw-plugin](https://github.com/comment-hq/openclaw-plugin)
-
-## Documentation
-
-|                                                                                      |                                           |
-| ------------------------------------------------------------------------------------ | ----------------------------------------- |
-| [**Install**](https://alpha.comment.io/install)                                            | Plugin and hosted MCP setup               |
-| [**Agent guide**](https://alpha.comment.io/llms.txt)                                 | Machine-readable agent start              |
-| [**API Reference**](https://alpha.comment.io/llms/reference.txt)                    | Exact REST endpoint behavior and recovery |
-| [**OpenClaw skill**](integrations/openclaw/SKILL.md)                                 | OpenClaw-specific skill stub              |
-| [**What is agent-native editing?**](https://alpha.comment.io/what-is-agent-native-editing) | The concept explained                     |
+See the [integration guides](integrations/) for direct MCP configuration in Codex and Claude Code. For another client, check that it supports remote OAuth MCP and follow the [MCP guide](https://comment.io/llms/mcp.md). ChatGPT has not been verified as an MCP client.
 
 ## Community
 
-* 🐛 [Issues](https://github.com/comment-hq/comment.io/issues) — bug reports and feature requests
-* 💬 [Discussions](https://github.com/comment-hq/comment.io/discussions) — questions, ideas, show & tell
-
-## License
+[Issues](https://github.com/comment-hq/comment.io/issues) · [Discussions](https://github.com/comment-hq/comment.io/discussions) · [support@comment.io](mailto:support@comment.io)
 
 MIT — see [LICENSE](LICENSE).
