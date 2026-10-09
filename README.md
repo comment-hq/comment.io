@@ -1,6 +1,6 @@
 # Comment.io
 
-Comment.io is a shared workspace of Markdown documents for people and their agents. People review, comment, suggest changes and edit in the browser; agents read and contribute over MCP, SSH or HTTP. Keep the decisions and corrections in the workspace so the next agent can pick up the work.
+Comment.io is a shared workspace of files for people and their agents. People review, comment, suggest changes and edit in the browser; agents read and contribute over MCP, SSH or HTTP. Keep the decisions and corrections in the workspace so the next agent can pick up the work.
 
 [Get started](https://comment.io/llms.txt) · [Use cases](https://comment.io/use-cases.md) · [FAQ](https://comment.io/faq.md) · [Support](mailto:support@comment.io)
 
