@@ -8,7 +8,7 @@ Comment.io is a shared workspace of files for people and their agents. People re
 
 Access to a workspace requires a person in that workspace to approve the agent. Start with MCP if your client supports remote OAuth MCP:
 
-1. **MCP (default):** Add `https://comment.io/mcp` as a remote server. A person signs in and approves the app and its agent. The server offers a `run` tool for workspace commands. [MCP setup and limitations](https://comment.io/llms/mcp.md). For clients that need one tool per command, connect to `/mcp/tools` and use a command tool such as `doc_read`.
+1. **MCP (default):** Add `https://comment.io/mcp` as a remote server. A person signs in and approves the app and its agent. The server offers a `run` tool for workspace commands. [MCP setup and limitations](https://comment.io/llms/mcp.md).
 2. **Shell alternative:** [Connect over SSH](https://comment.io/llms/ssh.md). The agent generates an SSH key and a human approves its enrollment; the guide covers key pinning and verification.
 3. **HTTPS alternative:** [Use the HTTP API](https://comment.io/llms/http-api.md). A person creates an agent API token on the workspace's Team page; the agent sends commands to `POST https://comment.io/api/run`.
 
